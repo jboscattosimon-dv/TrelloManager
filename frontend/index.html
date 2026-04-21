@@ -643,100 +643,115 @@
       <div class="page" id="page-drive">
 
         <!-- Status de conexão -->
-        <div class="card" id="driveConnectCard">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-            <div>
-              <div style="font-weight:700;margin-bottom:4px">Google Drive</div>
-              <div style="font-size:0.82rem;color:var(--text2)" id="driveStatusLabel">Verificando conexão...</div>
-            </div>
-            <div id="driveConnectBtns"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span id="driveStatusDot" style="width:8px;height:8px;border-radius:50%;background:var(--text3);flex-shrink:0;display:inline-block"></span>
+            <span style="font-size:0.85rem;color:var(--text2)" id="driveStatusLabel">Verificando...</span>
           </div>
+          <div id="driveConnectBtns"></div>
         </div>
 
-        <!-- Conteúdo principal (oculto até conectar) -->
+        <!-- Conteúdo principal -->
         <div id="driveMain" style="display:none">
 
-          <!-- Passo 1: Cliente -->
-          <div class="card">
-            <div class="card-title">1 · Selecione o cliente</div>
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Cliente</label>
-              <select id="driveCliente" onchange="onDriveClienteChange()">
-                <option value="">Selecione...</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Passo 2: Selecionar lista -->
-          <div class="card" id="driveListaCard" style="display:none">
-            <div class="card-title">2 · Selecione a lista</div>
-            <div id="driveListasWrap" style="display:flex;flex-wrap:wrap;gap:8px"></div>
-          </div>
-
-          <!-- Passo 3: Links do Drive encontrados na lista -->
-          <div class="card" id="drivePastaCard" style="display:none">
-            <div class="card-title">3 · Pasta do Drive</div>
-            <div id="driveLinksWrap" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px"></div>
-            <!-- Navegação de subpastas -->
-            <div id="driveNavWrap" style="display:none">
-              <div class="form-label" style="margin-bottom:8px">Navegar pastas</div>
-              <div id="driveBreadcrumb" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;font-size:0.8rem;color:var(--text3)"></div>
-              <div id="driveSubfolders" style="display:flex;flex-wrap:wrap;gap:8px"></div>
-            </div>
-          </div>
-
-          <!-- Passo 4: Criar pastas -->
-          <div class="card" id="driveCriarCard" style="display:none">
-            <div class="card-title">4 · Criar pastas de datas</div>
-            <div class="row-2" style="margin-bottom:16px">
+          <!-- Cliente + Lista numa linha -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="row-2">
               <div class="form-group" style="margin:0">
-                <label class="form-label">Mês</label>
-                <select id="driveMes">
-                  <option value="1">Janeiro</option><option value="2">Fevereiro</option>
-                  <option value="3">Março</option><option value="4">Abril</option>
-                  <option value="5">Maio</option><option value="6">Junho</option>
-                  <option value="7">Julho</option><option value="8">Agosto</option>
-                  <option value="9">Setembro</option><option value="10">Outubro</option>
-                  <option value="11">Novembro</option><option value="12">Dezembro</option>
+                <label class="form-label">Cliente</label>
+                <select id="driveCliente" onchange="onDriveClienteChange()">
+                  <option value="">Selecione...</option>
                 </select>
               </div>
-              <div class="form-group" style="margin:0">
-                <label class="form-label">Ano</label>
-                <input type="number" id="driveAno" value="2026" min="2024" max="2030">
+              <div class="form-group" style="margin:0" id="driveListaSelectWrap" style="display:none">
+                <label class="form-label">Lista</label>
+                <select id="driveListaSelect" onchange="onDriveListaSelectChange()" disabled>
+                  <option value="">Selecione uma lista...</option>
+                </select>
               </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Dias da semana</label>
-              <div class="day-grid" id="driveDias">
-                <span class="day-chip on" data-d="1">Seg</span>
-                <span class="day-chip on" data-d="2">Ter</span>
-                <span class="day-chip on" data-d="3">Qua</span>
-                <span class="day-chip on" data-d="4">Qui</span>
-                <span class="day-chip on" data-d="5">Sex</span>
-                <span class="day-chip" data-d="6">Sáb</span>
-                <span class="day-chip" data-d="0">Dom</span>
-              </div>
-            </div>
-            <div class="form-group" style="margin-bottom:0">
-              <label class="form-label">Formato do nome da pasta</label>
-              <select id="driveFormato">
-                <option value="dd">01  (só o dia)</option>
-                <option value="dd/mm" selected>01/05  (dia/mês)</option>
-                <option value="dd-mm">01-05  (dia-mês)</option>
-                <option value="nome dd/mm">Seg 01/05  (dia semana + data)</option>
-              </select>
             </div>
           </div>
 
-          <div id="driveCriarBtnWrap" style="display:none">
-            <button class="btn btn-primary" id="btnCriarPastas" onclick="criarPastasDrive()">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
-              Criar Pastas
-            </button>
+          <!-- Cards da lista selecionada -->
+          <div id="driveCardsCard" style="display:none;margin-bottom:16px">
+            <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:10px">Cards da lista</div>
+            <div id="driveLinksWrap"></div>
           </div>
-          <div class="progress-wrap" id="progressDrive"><div class="progress-bar" id="progressBarDrive"></div></div>
-          <div class="log-box" id="logDrive"></div>
 
+          <!-- Navegador de pasta + Criar pastas (aparece após selecionar link) -->
+          <div id="driveBrowserPanel" style="display:none">
+
+            <!-- Destino atual -->
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 14px;background:var(--accent-dim);border:1px solid rgba(99,102,241,0.25);border-radius:8px">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-hover)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:0.7rem;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">Pasta de destino</div>
+                <div id="driveDestinoNome" style="font-size:0.88rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+              </div>
+              <a id="driveDestinoLink" href="#" target="_blank" style="font-size:0.75rem;color:var(--accent);text-decoration:none;flex-shrink:0">Abrir ↗</a>
+            </div>
+
+            <!-- Navegador de subpastas -->
+            <div class="card" style="margin-bottom:16px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3)">Navegar subpastas</div>
+                <div id="driveBreadcrumb" style="display:flex;gap:4px;flex-wrap:wrap;align-items:center"></div>
+              </div>
+              <div id="driveSubfolders" style="display:flex;flex-wrap:wrap;gap:6px">
+                <span style="color:var(--text3);font-size:0.82rem">Carregando...</span>
+              </div>
+            </div>
+
+            <!-- Criar pastas de datas -->
+            <div class="card" id="driveCriarCard">
+              <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:16px">Criar pastas de datas aqui</div>
+              <div class="row-2" style="margin-bottom:16px">
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Mês</label>
+                  <select id="driveMes">
+                    <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+                    <option value="3">Março</option><option value="4">Abril</option>
+                    <option value="5">Maio</option><option value="6">Junho</option>
+                    <option value="7">Julho</option><option value="8">Agosto</option>
+                    <option value="9">Setembro</option><option value="10">Outubro</option>
+                    <option value="11">Novembro</option><option value="12">Dezembro</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Ano</label>
+                  <input type="number" id="driveAno" value="2026" min="2024" max="2030">
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Dias da semana</label>
+                <div class="day-grid" id="driveDias">
+                  <span class="day-chip on" data-d="1">Seg</span>
+                  <span class="day-chip on" data-d="2">Ter</span>
+                  <span class="day-chip on" data-d="3">Qua</span>
+                  <span class="day-chip on" data-d="4">Qui</span>
+                  <span class="day-chip on" data-d="5">Sex</span>
+                  <span class="day-chip" data-d="6">Sáb</span>
+                  <span class="day-chip" data-d="0">Dom</span>
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom:20px">
+                <label class="form-label">Formato do nome</label>
+                <select id="driveFormato">
+                  <option value="dd">01  (só o dia)</option>
+                  <option value="dd/mm" selected>01/05  (dia/mês)</option>
+                  <option value="dd-mm">01-05  (dia-mês)</option>
+                  <option value="nome dd/mm">Seg 01/05  (dia semana + data)</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" id="btnCriarPastas" onclick="criarPastasDrive()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                Criar Pastas
+              </button>
+              <div class="progress-wrap" id="progressDrive" style="margin-top:14px"><div class="progress-bar" id="progressBarDrive"></div></div>
+              <div class="log-box" id="logDrive"></div>
+            </div>
+
+          </div>
         </div>
       </div>
 
@@ -1192,13 +1207,12 @@
       try {
         const { connected, email } = await driveApi('/status');
         driveConnected = connected;
-        document.getElementById('driveStatusLabel').textContent = connected
-          ? `✓ Conectado como ${email}`
-          : 'Não conectado ao Google Drive';
+        document.getElementById('driveStatusDot').style.background = connected ? 'var(--green)' : 'var(--text3)';
+        document.getElementById('driveStatusLabel').textContent = connected ? `Conectado como ${email}` : 'Não conectado ao Google Drive';
         document.getElementById('driveConnectBtns').innerHTML = connected
           ? `<button class="btn btn-ghost btn-sm" onclick="disconnectDrive()">Desconectar</button>`
           : `<button class="btn btn-primary btn-sm" onclick="profileConnectDrive()">
-               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
                Conectar Google Drive
              </button>`;
         document.getElementById('driveMain').style.display = connected ? 'block' : 'none';
@@ -1224,49 +1238,35 @@
 
     async function onDriveClienteChange() {
       const gi = document.getElementById('driveCliente').value;
-      document.getElementById('driveListaCard').style.display = 'none';
-      document.getElementById('drivePastaCard').style.display = 'none';
-      document.getElementById('driveCriarCard').style.display = 'none';
-      document.getElementById('driveCriarBtnWrap').style.display = 'none';
-      document.getElementById('driveNavWrap').style.display = 'none';
-      if (!gi) return;
+      const listSel = document.getElementById('driveListaSelect');
+      document.getElementById('driveCardsCard').style.display = 'none';
+      document.getElementById('driveBrowserPanel').style.display = 'none';
+      listSel.innerHTML = '<option value="">Selecione uma lista...</option>';
+      listSel.disabled = true;
+      if (!gi) { document.getElementById('driveListaSelectWrap').style.display = 'none'; return; }
 
-      const c = clientes[+gi];
-      document.getElementById('driveListasWrap').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Buscando listas...</span>';
-      document.getElementById('driveListaCard').style.display = 'block';
+      document.getElementById('driveListaSelectWrap').style.display = 'block';
+      listSel.innerHTML = '<option value="">Carregando...</option>';
 
       try {
+        const c = clientes[+gi];
         const lists = await tFetch(`/boards/${c.boardId}/lists?filter=open`);
-        if (!lists.length) { document.getElementById('driveListasWrap').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Nenhuma lista encontrada.</span>'; return; }
-        document.getElementById('driveListasWrap').innerHTML = lists.map(l => `
-          <button onclick="onDriveListaSelect('${l.id}', this)"
-            style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:0.82rem;cursor:pointer;transition:all .15s;font-family:inherit"
-            onmouseover="this.style.borderColor='var(--accent)'" onmouseout="if(!this.classList.contains('sel'))this.style.borderColor='var(--border2)'">
-            ${l.name}
-          </button>`).join('');
+        listSel.innerHTML = '<option value="">Selecione uma lista...</option>' +
+          lists.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+        listSel.disabled = false;
       } catch (err) {
-        document.getElementById('driveListasWrap').innerHTML = `<span style="color:var(--red);font-size:0.82rem">Erro: ${err.message}</span>`;
+        listSel.innerHTML = `<option value="">Erro ao carregar listas</option>`;
       }
     }
 
-    async function onDriveListaSelect(listId, btn) {
-      document.querySelectorAll('#driveListasWrap button').forEach(b => {
-        b.classList.remove('sel');
-        b.style.borderColor = 'var(--border2)';
-        b.style.background = 'var(--surface2)';
-        b.style.color = 'var(--text)';
-      });
-      btn.classList.add('sel');
-      btn.style.borderColor = 'var(--accent)';
-      btn.style.background = 'var(--accent-dim)';
-      btn.style.color = 'var(--accent-hover)';
+    async function onDriveListaSelectChange() {
+      const listId = document.getElementById('driveListaSelect').value;
+      document.getElementById('driveBrowserPanel').style.display = 'none';
+      document.getElementById('driveCardsCard').style.display = 'none';
+      if (!listId) return;
 
-      document.getElementById('drivePastaCard').style.display = 'none';
-      document.getElementById('driveCriarCard').style.display = 'none';
-      document.getElementById('driveCriarBtnWrap').style.display = 'none';
-      document.getElementById('driveNavWrap').style.display = 'none';
       document.getElementById('driveLinksWrap').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Buscando cards...</span>';
-      document.getElementById('drivePastaCard').style.display = 'block';
+      document.getElementById('driveCardsCard').style.display = 'block';
 
       try {
         const cards = await tFetch(`/lists/${listId}/cards`);
@@ -1284,22 +1284,26 @@
                     if (m) {
                       const fid = m[1];
                       const safeName = card.name.replace(/'/g,"\\'");
-                      return `<a href="#" onclick="selecionarDriveLink('${fid}','${safeName}',event)" style="color:var(--accent);word-break:break-all">📁 ${url}</a>`;
+                      return `<a href="#" onclick="selecionarDriveLink('${fid}','${safeName}',event)" style="color:var(--accent);font-weight:500;word-break:break-all;text-decoration:none">
+                        <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:6px;background:var(--accent-dim);border:1px solid rgba(99,102,241,0.2);font-size:0.78rem">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                          Selecionar esta pasta
+                        </span>
+                      </a><br><span style="font-size:0.72rem;color:var(--text3);word-break:break-all">${url}</span>`;
                     }
-                    return `<a href="${url}" target="_blank" style="color:var(--accent);word-break:break-all">${url}</a>`;
+                    return `<a href="${url}" target="_blank" style="color:var(--accent);word-break:break-all;font-size:0.78rem">${url}</a>`;
                   })
                   .replace(/\n/g,'<br>')
-            : '<span style="color:var(--text3)">Sem descrição</span>';
+            : '<span style="color:var(--text3);font-size:0.78rem">Sem descrição</span>';
 
           const safeName = card.name.replace(/&/g,'&amp;').replace(/</g,'&lt;');
-          const hasDesc = !!desc;
-          return `<div style="border:1px solid var(--border2);border-radius:8px;margin-bottom:8px;background:var(--surface2);overflow:hidden">
-            <button onclick="toggleCardDesc(${ci})" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:none;border:none;color:var(--text);font-family:inherit;font-size:0.85rem;font-weight:600;cursor:pointer;text-align:left">
+          return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface);overflow:hidden">
+            <button onclick="toggleCardDesc(${ci})" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px;background:none;border:none;color:var(--text);font-family:inherit;font-size:0.84rem;font-weight:600;cursor:pointer;text-align:left">
               <span>${safeName}</span>
-              <svg id="card-chevron-${ci}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;color:var(--text3);transition:transform .2s"><path d="m6 9 6 6 6-6"/></svg>
+              <svg id="card-chevron-${ci}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;color:var(--text3);transition:transform .2s"><path d="m6 9 6 6 6-6"/></svg>
             </button>
-            <div id="card-desc-${ci}" style="display:none;padding:0 14px 12px;font-size:0.8rem;color:var(--text2);line-height:1.7;border-top:1px solid var(--border)">
-              ${hasDesc ? descHtml : '<span style="color:var(--text3)">Sem descrição</span>'}
+            <div id="card-desc-${ci}" style="display:none;padding:10px 14px 12px;font-size:0.8rem;color:var(--text2);line-height:1.8;border-top:1px solid var(--border)">
+              ${descHtml}
             </div>
           </div>`;
         }).join('');
@@ -1320,50 +1324,42 @@
 
     async function selecionarDriveLink(folderId, cardName, e) {
       if (e && e.preventDefault) e.preventDefault();
-
-      document.getElementById('driveNavWrap').style.display = 'none';
-      document.getElementById('driveCriarCard').style.display = 'none';
-      document.getElementById('driveCriarBtnWrap').style.display = 'none';
-
-      const feedback = document.getElementById('driveLinkFeedback');
-      if (feedback) feedback.remove();
-      const fbEl = document.createElement('div');
-      fbEl.id = 'driveLinkFeedback';
-      fbEl.style.cssText = 'font-size:0.8rem;color:var(--text3);margin-top:8px;padding:8px 12px;border-radius:8px;background:var(--surface);border:1px solid var(--border2)';
-      fbEl.textContent = 'Carregando pasta...';
-      document.getElementById('driveLinksWrap').after(fbEl);
-
+      document.getElementById('driveBrowserPanel').style.display = 'none';
+      document.getElementById('driveDestinoNome').textContent = 'Carregando...';
       try {
         const info = await driveApi(`/folder-info?folderId=${folderId}`);
-        fbEl.innerHTML = `📁 <strong style="color:var(--text)">${info.name}</strong> selecionada como destino`;
         driveFolderStack = [{ id: folderId, name: info.name }];
         driveCurrentFolderId = folderId;
-        document.getElementById('driveNavWrap').style.display = 'block';
+        document.getElementById('driveDestinoNome').textContent = info.name;
+        document.getElementById('driveDestinoLink').href = `https://drive.google.com/drive/folders/${folderId}`;
+        document.getElementById('driveBrowserPanel').style.display = 'block';
         await loadDriveSubfolders(folderId);
       } catch (err) {
-        fbEl.style.color = 'var(--red)';
-        fbEl.textContent = 'Erro ao acessar pasta: ' + err.message;
+        alert('Erro ao acessar pasta: ' + err.message);
       }
     }
 
     async function loadDriveSubfolders(folderId) {
       driveCurrentFolderId = folderId;
       document.getElementById('driveSubfolders').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Carregando...</span>';
+      // atualiza destino atual
+      const cur = driveFolderStack[driveFolderStack.length - 1];
+      document.getElementById('driveDestinoNome').textContent = cur?.name || '';
+      document.getElementById('driveDestinoLink').href = `https://drive.google.com/drive/folders/${folderId}`;
       renderBreadcrumb();
-      document.getElementById('driveCriarCard').style.display = 'block';
-      document.getElementById('driveCriarBtnWrap').style.display = 'block';
 
       try {
         const folders = await driveApi(`/folders?folderId=${folderId}`);
         if (!folders.length) {
-          document.getElementById('driveSubfolders').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Nenhuma subpasta encontrada</span>';
+          document.getElementById('driveSubfolders').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Nenhuma subpasta</span>';
           return;
         }
         document.getElementById('driveSubfolders').innerHTML = folders.map(f => `
           <button onclick="enterFolder('${f.id}','${f.name.replace(/'/g,"\\'")}')"
-            style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:0.82rem;cursor:pointer;transition:all .15s"
-            onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
-            📁 ${f.name}
+            style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:7px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:0.8rem;cursor:pointer;transition:all .15s;font-family:inherit"
+            onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            ${f.name}
           </button>`).join('');
       } catch (err) {
         document.getElementById('driveSubfolders').innerHTML = `<span style="color:var(--red);font-size:0.82rem">${err.message}</span>`;
@@ -1376,11 +1372,11 @@
     }
 
     function renderBreadcrumb() {
-      document.getElementById('driveBreadcrumb').innerHTML = driveFolderStack.map((f, i) => `
-        <span>
-          ${i > 0 ? '<span style="color:var(--text3)">/</span> ' : ''}
-          <button onclick="goToBreadcrumb(${i})" style="background:none;border:none;color:${i===driveFolderStack.length-1?'var(--text)':'var(--accent)'};cursor:pointer;font-size:0.8rem;padding:0">${f.name}</button>
-        </span>`).join('');
+      document.getElementById('driveBreadcrumb').innerHTML = driveFolderStack.map((f, i) => {
+        const isLast = i === driveFolderStack.length - 1;
+        return `${i > 0 ? '<span style="color:var(--text3);font-size:0.75rem;margin:0 2px">/</span>' : ''}
+          <button onclick="goToBreadcrumb(${i})" style="background:none;border:none;padding:2px 6px;border-radius:5px;font-family:inherit;font-size:0.78rem;cursor:${isLast?'default':'pointer'};color:${isLast?'var(--text)':'var(--accent)'};font-weight:${isLast?'600':'400'};background:${isLast?'var(--surface2)':'none'}">${f.name}</button>`;
+      }).join('');
     }
 
     function goToBreadcrumb(idx) {
