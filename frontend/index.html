@@ -31,7 +31,7 @@
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
       background: var(--bg);
       color: var(--text);
-      min-height: 100vh;
+      height: 100vh;
       display: flex;
       overflow: hidden;
     }
@@ -156,10 +156,11 @@
     .main-wrap {
       margin-left: var(--sidebar-w);
       flex: 1;
-      min-height: 100vh;
+      height: 100vh;
       transition: margin-left 0.25s cubic-bezier(.4,0,.2,1);
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
     .main-wrap.expanded { margin-left: 0; }
 
@@ -181,6 +182,7 @@
       padding: 32px 32px 48px;
       max-width: 960px;
       overflow-y: auto;
+      height: 0;
     }
 
     /* ── Cards / surfaces ───────────────────── */
@@ -616,9 +618,11 @@
           <div id="configTable" style="padding:16px;color:var(--text3);font-size:0.85rem">Carregando boards...</div>
         </div>
 
-        <div style="margin-top:16px">
-          <button class="btn btn-primary" onclick="salvarConfig()">Salvar Configurações</button>
-        </div>
+      </div>
+
+      <!-- sticky save bar -->
+      <div style="position:sticky;bottom:0;margin-top:auto;padding:16px 32px;background:linear-gradient(to top,var(--bg) 70%,transparent);display:none" id="configSaveBar">
+        <button class="btn btn-primary" onclick="salvarConfig()">Salvar Configurações</button>
       </div>
 
     </div>
@@ -678,6 +682,7 @@
       });
       document.getElementById('topbarTitle').textContent = PAGE_META[name]?.title || '';
       document.getElementById('topbarSub').textContent = PAGE_META[name]?.sub || '';
+      document.getElementById('configSaveBar').style.display = name === 'config' ? 'block' : 'none';
       if (name === 'config') renderConfig();
     }
 
