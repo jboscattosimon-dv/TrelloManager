@@ -384,7 +384,7 @@
           const existing = clientes.find(c => c.boardId === b.id);
           if (!existing) {
             const listas = await fetchListas(b.id);
-            clientes.push({ nome: b.name, boardId: b.id, listId: '', diasSemana: [1,2,3,4,5], ativo: true, listas });
+            clientes.push({ nome: b.name, boardId: b.id, listIds: [], diasSemana: [1,2,3,4,5], ativo: true, listas });
           } else if (!existing.listas || !existing.listas.length) {
             existing.listas = await fetchListas(b.id);
           }
@@ -448,13 +448,22 @@
     }
 
     // ── Criar Cards ───────────────────────────────────────
-    function renderClienteCheckboxes() {
-      const ativos = clientes.filter(c => c.ativo);
-      document.getElementById('clienteCheckboxes').innerHTML = ativos.map((c, i) => `
-        <label style="display:flex;align-items:center;gap:6px;background:#f4f4f5;border:1px solid #a1a1aa;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:0.85rem;font-weight:500;">
-          <input type="checkbox" checked data-idx="${clientes.indexOf(c)}" style="width:auto;margin:0;padding:0;"> ${c.nome}
-        </label>`).join('');
+    function getListIds(c) {
+      if (c.listIds && c.listIds.length) return c.listIds;
+      if (c.listId) return [c.listId]; // compat legado
+      return [];
     }
+
+    function renderClienteCheckboxes() {
+      const comLista = clientes.filter(c => c.ativo && getListIds(c).length > 0);
+      document.getElementById('clienteCheckboxes').innerHTML = comLista.length
+        ? comLista.map(c => `
+            <label style="display:flex;align-items:center;gap:6px;background:#f4f4f5;border:1px solid #a1a1aa;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:0.85rem;font-weight:500;">
+              <input type="checkbox" checked data-idx="${clientes.indexOf(c)}" style="width:auto;margin:0;padding:0;"> ${c.nome}
+            </label>`).join('')
+        : '<p style="color:#71717a;font-size:0.85rem">Nenhum cliente ativo com lista configurada.</p>';
+    }
+
     async function criarCards() {
       const inicio = document.getElementById('dataInicio').value;
       const fim = document.getElementById('dataFim').value;
@@ -476,28 +485,32 @@
       progressBar.style.width = '0%';
 
       let total = 0, done = 0;
-      selecionados.forEach(c => total += diasNoRange(inicio, fim, c.diasSemana).length);
+      selecionados.forEach(c => total += diasNoRange(inicio, fim, c.diasSemana).length * getListIds(c).length);
 
       for (const c of selecionados) {
-        if (!c.listId) { logMsg(logEl, `⚠ ${c.nome}: sem lista configurada`, 'log-err'); continue; }
+        const listIds = getListIds(c);
         const dias = diasNoRange(inicio, fim, c.diasSemana);
-        logMsg(logEl, `<br>── ${c.nome} (${dias.length} cards) ──`, 'log-info');
-        for (const d of dias) {
-          const titulo = formatarTitulo(d);
-          try {
-            const existing = await buscarCard(c.listId, titulo);
-            if (existing) {
-              logMsg(logEl, `  ↷ ${titulo} — já existe`);
-            } else {
-              await criarCard(c.listId, titulo, '');
-              logMsg(logEl, `  ✓ ${titulo}`, 'log-ok');
+        logMsg(logEl, `<br>── ${c.nome} (${dias.length} cards × ${listIds.length} lista${listIds.length>1?'s':''}) ──`, 'log-info');
+        for (const listId of listIds) {
+          const nomeLista = (c.listas||[]).find(l => l.id === listId)?.name || listId;
+          logMsg(logEl, `  → ${nomeLista}`, 'log-info');
+          for (const d of dias) {
+            const titulo = formatarTitulo(d);
+            try {
+              const existing = await buscarCard(listId, titulo);
+              if (existing) {
+                logMsg(logEl, `    ↷ ${titulo} — já existe`);
+              } else {
+                await criarCard(listId, titulo, '');
+                logMsg(logEl, `    ✓ ${titulo}`, 'log-ok');
+              }
+            } catch (err) {
+              logMsg(logEl, `    ✗ ${titulo}: ${err.message}`, 'log-err');
             }
-          } catch (err) {
-            logMsg(logEl, `  ✗ ${titulo}: ${err.message}`, 'log-err');
+            done++;
+            progressBar.style.width = `${Math.round(done/total*100)}%`;
+            await new Promise(r => setTimeout(r, 150));
           }
-          done++;
-          progressBar.style.width = `${Math.round(done/total*100)}%`;
-          await new Promise(r => setTimeout(r, 150));
         }
       }
       logMsg(logEl, '<br>Concluído!', 'log-ok');
@@ -507,9 +520,15 @@
     // ── Subir Conteúdo ────────────────────────────────────
     function populateClienteSubir() {
       const sel = document.getElementById('clienteSubir');
-      sel.innerHTML = '<option value="">Selecione um cliente...</option>';
-      clientes.filter(c => c.ativo && c.listId).forEach((c, i) => {
-        sel.innerHTML += `<option value="${clientes.indexOf(c)}">${c.nome}</option>`;
+      sel.innerHTML = '<option value="">Selecione cliente / lista...</option>';
+      clientes.filter(c => c.ativo).forEach(c => {
+        const ids = getListIds(c);
+        if (!ids.length) return;
+        const gi = clientes.indexOf(c);
+        ids.forEach(lid => {
+          const nomeLista = (c.listas||[]).find(l => l.id === lid)?.name || lid;
+          sel.innerHTML += `<option value="${gi}|${lid}">${c.nome} — ${nomeLista}</option>`;
+        });
       });
     }
     const MESES_MAP = {
@@ -558,9 +577,10 @@
     }
 
     async function subirConteudo() {
-      const idx = document.getElementById('clienteSubir').value;
-      if (!idx) return alert('Selecione um cliente');
-      const c = clientes[+idx];
+      const val = document.getElementById('clienteSubir').value;
+      if (!val) return alert('Selecione um cliente');
+      const [gi, listId] = val.split('|');
+      const c = clientes[+gi];
       const texto = document.getElementById('conteudo').value.trim();
       if (!texto) return alert('Cole o conteúdo');
 
@@ -578,15 +598,13 @@
       progressWrap.style.display = 'block';
       progressBar.style.width = '0%';
 
-      logMsg(logEl, `Enviando ${blocos.length} blocos para ${c.nome}...`, 'log-info');
+      const nomeLista = (c.listas||[]).find(l => l.id === listId)?.name || listId;
+      logMsg(logEl, `Enviando ${blocos.length} blocos para ${c.nome} — ${nomeLista}...`, 'log-info');
 
       for (let i = 0; i < blocos.length; i++) {
         const b = blocos[i];
-        // Encontrar o card pelo titulo DD/MM
-        const diasNomes = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
-        // Título no board: "18/05 - Segunda-feira" — precisamos buscar pelo DD/MM
         try {
-          const cards = await tFetch(`/lists/${c.listId}/cards`);
+          const cards = await tFetch(`/lists/${listId}/cards`);
           const card = cards.find(card => card.name.startsWith(b.data));
           if (!card) {
             logMsg(logEl, `  ⚠ ${b.data}: card não encontrado na lista`, 'log-err');
@@ -624,8 +642,15 @@
       }
       const rows = lista.map(c => {
         const gi = clientes.indexOf(c);
-        const optsListas = (c.listas || []).map(l =>
-          `<option value="${l.id}" ${c.listId === l.id ? 'selected' : ''}>${l.name}</option>`).join('');
+        const ids = getListIds(c);
+        const listasCheck = (c.listas || []).length
+          ? (c.listas).map(l => `
+              <label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer;white-space:nowrap">
+                <input type="checkbox" ${ids.includes(l.id)?'checked':''}
+                  onchange="toggleLista(${gi},'${l.id}',this.checked)" style="width:auto;margin:0;padding:0">
+                ${l.name}
+              </label>`).join('')
+          : `<span style="color:#71717a;font-size:0.78rem">Clique em ↻</span>`;
         const diasCheck = [1,2,3,4,5,6,0].map(d => `
           <label style="display:flex;align-items:center;gap:3px;font-size:0.78rem;cursor:pointer">
             <input type="checkbox" ${(c.diasSemana||[1,2,3,4,5]).includes(d)?'checked':''}
@@ -636,11 +661,9 @@
           <tr>
             <td style="font-weight:600">${c.nome}</td>
             <td>
-              <div style="display:flex;gap:6px;align-items:center">
-                <select onchange="clientes[${gi}].listId=this.value" style="min-width:150px">
-                  <option value="">Selecione a lista...</option>${optsListas}
-                </select>
-                <button class="btn btn-secondary btn-sm" onclick="fetchListasCliente(${gi})">↻</button>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="display:flex;flex-wrap:wrap;gap:8px">${listasCheck}</div>
+                <button class="btn btn-secondary btn-sm" style="align-self:flex-start;margin-top:2px" onclick="fetchListasCliente(${gi})">↻ atualizar listas</button>
               </div>
             </td>
             <td><div style="display:flex;gap:8px;flex-wrap:wrap">${diasCheck}</div></td>
@@ -660,6 +683,12 @@
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>`;
+    }
+
+    function toggleLista(gi, lid, checked) {
+      if (!clientes[gi].listIds) clientes[gi].listIds = [];
+      if (checked && !clientes[gi].listIds.includes(lid)) clientes[gi].listIds.push(lid);
+      if (!checked) clientes[gi].listIds = clientes[gi].listIds.filter(id => id !== lid);
     }
 
     function toggleDia(gi, dia, checked) {
