@@ -6,224 +6,388 @@
   <title>Trello Manager</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #d4d4d8;
-      min-height: 100vh;
-      color: #09090b;
+
+    :root {
+      --sidebar-w: 240px;
+      --bg: #0d0d0f;
+      --sidebar-bg: #111113;
+      --surface: #1a1a1e;
+      --surface2: #222226;
+      --border: #2a2a30;
+      --border2: #333339;
+      --text: #f0f0f2;
+      --text2: #8e8e9a;
+      --text3: #5a5a68;
+      --accent: #6366f1;
+      --accent-dim: rgba(99,102,241,0.15);
+      --accent-hover: #818cf8;
+      --green: #34d399;
+      --red: #f87171;
+      --yellow: #fbbf24;
+      --radius: 10px;
     }
-    header {
-      background: #09090b;
-      color: #fff;
-      padding: 0 24px;
-      height: 56px;
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ─────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      min-height: 100vh;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      z-index: 100;
+      transition: transform 0.25s cubic-bezier(.4,0,.2,1);
+    }
+    .sidebar.collapsed { transform: translateX(calc(-1 * var(--sidebar-w))); }
+
+    .sidebar-header {
+      padding: 20px 20px 16px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
     }
-    header h1 { font-size: 1.1rem; font-weight: 700; }
-    header nav { display: flex; gap: 16px; align-items: center; }
-    .nav-link {
-      color: #a1a1aa;
-      text-decoration: none;
-      font-size: 0.875rem;
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 0;
-      transition: color 0.15s;
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), #8b5cf6);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
     }
-    .nav-link:hover { color: #fff; }
-    .nav-link.active { color: #fff; font-weight: 600; }
-    .logout-btn {
-      background: transparent;
-      border: 1px solid #3f3f46;
-      color: #a1a1aa;
-      padding: 6px 14px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.8rem;
-      transition: all 0.15s;
-    }
-    .logout-btn:hover { border-color: #a1a1aa; color: #fff; }
-    .tabs {
+    .logo-text { font-size: 0.95rem; font-weight: 700; letter-spacing: -0.02em; }
+    .logo-sub { font-size: 0.7rem; color: var(--text3); margin-top: 1px; }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 12px 10px;
       display: flex;
-      gap: 4px;
-      padding: 20px 24px 0;
-      max-width: 1100px;
-      margin: 0 auto;
+      flex-direction: column;
+      gap: 2px;
     }
-    .tab {
-      padding: 9px 20px;
-      border-radius: 8px 8px 0 0;
-      background: #c4c4c8;
-      border: 1px solid #a1a1aa;
-      border-bottom: none;
+    .nav-section-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text3);
+      padding: 8px 10px 4px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 8px;
       cursor: pointer;
       font-size: 0.875rem;
       font-weight: 500;
-      color: #3f3f46;
+      color: var(--text2);
+      transition: all 0.15s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      text-decoration: none;
+    }
+    .nav-item:hover { background: var(--surface); color: var(--text); }
+    .nav-item.active {
+      background: var(--accent-dim);
+      color: var(--accent-hover);
+    }
+    .nav-item svg { opacity: 0.7; flex-shrink: 0; }
+    .nav-item.active svg { opacity: 1; }
+
+    .sidebar-footer {
+      padding: 12px 10px;
+      border-top: 1px solid var(--border);
+    }
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .user-pill:hover { background: var(--surface); }
+    .user-avatar {
+      width: 28px; height: 28px;
+      background: linear-gradient(135deg, var(--accent), #8b5cf6);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .user-info { flex: 1; min-width: 0; }
+    .user-name { font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role { font-size: 0.68rem; color: var(--text3); }
+    .logout-icon { color: var(--text3); transition: color 0.15s; }
+    .user-pill:hover .logout-icon { color: var(--red); }
+
+    /* ── Hamburger ──────────────────────────── */
+    .hamburger {
+      position: fixed;
+      top: 16px; left: 16px;
+      z-index: 200;
+      width: 36px; height: 36px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
       transition: all 0.15s;
     }
-    .tab.active {
-      background: #e4e4e7;
-      color: #09090b;
-      font-weight: 700;
+    .hamburger:hover { background: var(--surface2); border-color: var(--border2); }
+    .hamburger svg { color: var(--text2); }
+    .hamburger.sidebar-open { left: calc(var(--sidebar-w) + 16px); }
+
+    /* ── Main content ───────────────────────── */
+    .main-wrap {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      min-height: 100vh;
+      transition: margin-left 0.25s cubic-bezier(.4,0,.2,1);
+      display: flex;
+      flex-direction: column;
     }
-    .main {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 0 24px 40px;
+    .main-wrap.expanded { margin-left: 0; }
+
+    .topbar {
+      height: 56px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 28px 0 60px;
+      gap: 12px;
+      background: var(--sidebar-bg);
+      position: sticky; top: 0; z-index: 50;
     }
-    .panel {
-      display: none;
-      background: #e4e4e7;
-      border: 1px solid #a1a1aa;
-      border-radius: 0 12px 12px 12px;
-      padding: 28px;
+    .topbar h2 { font-size: 1rem; font-weight: 700; letter-spacing: -0.02em; }
+    .topbar-sub { font-size: 0.78rem; color: var(--text3); }
+
+    .content {
+      flex: 1;
+      padding: 32px 32px 48px;
+      max-width: 960px;
+      overflow-y: auto;
     }
-    .panel.active { display: block; }
-    .form-group { margin-bottom: 18px; }
-    label {
-      display: block;
-      font-size: 0.8rem;
+
+    /* ── Cards / surfaces ───────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 0.75rem;
       font-weight: 600;
-      color: #3f3f46;
-      margin-bottom: 6px;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.07em;
+      color: var(--text3);
+      margin-bottom: 16px;
+    }
+
+    /* ── Forms ──────────────────────────────── */
+    .form-group { margin-bottom: 18px; }
+    .form-label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text2);
+      margin-bottom: 7px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
     input[type="text"], input[type="date"], select, textarea {
       width: 100%;
       padding: 9px 12px;
-      border: 1px solid #a1a1aa;
+      border: 1px solid var(--border2);
       border-radius: 8px;
-      background: #f4f4f5;
-      color: #09090b;
+      background: var(--surface2);
+      color: var(--text);
       font-size: 0.875rem;
+      font-family: inherit;
       outline: none;
-      transition: border-color 0.15s;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      appearance: none;
     }
-    input:focus, select:focus, textarea:focus { border-color: #09090b; }
-    textarea { resize: vertical; font-family: inherit; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+    }
+    select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238e8e9a' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 32px; }
+    textarea { resize: vertical; }
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    /* ── Buttons ────────────────────────────── */
     .btn {
-      background: #09090b;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      padding: 10px 22px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.15s;
-    }
-    .btn:hover { opacity: 0.8; }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-secondary { background: #3f3f46; }
-    .btn-sm { padding: 5px 12px; font-size: 0.8rem; border-radius: 6px; }
-    .btn-danger { background: #b91c1c; }
-
-    /* Log output */
-    #log, #logSubir {
-      margin-top: 20px;
-      background: #18181b;
-      color: #a1a1aa;
-      border-radius: 8px;
-      padding: 16px;
-      font-size: 0.8rem;
-      font-family: monospace;
-      max-height: 320px;
-      overflow-y: auto;
-      line-height: 1.6;
-      display: none;
-    }
-    .log-ok { color: #4ade80; }
-    .log-err { color: #f87171; }
-    .log-info { color: #60a5fa; }
-
-    /* Config table */
-    .config-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.85rem;
-    }
-    .config-table th {
-      background: #27272a;
-      color: #e4e4e7;
-      text-align: left;
-      padding: 10px 12px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .config-table td {
-      padding: 8px 12px;
-      border-top: 1px solid #d4d4d8;
-      vertical-align: middle;
-    }
-    .config-table tr:hover td { background: #f4f4f5; }
-    .config-table input[type="text"] {
-      padding: 5px 8px;
-      font-size: 0.82rem;
-      margin: 0;
-    }
-    .badge {
-      display: inline-block;
-      padding: 2px 10px;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-    .badge-ativo { background: #dcfce7; color: #15803d; }
-    .badge-inativo { background: #f4f4f5; color: #71717a; }
-
-    .filter-row {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
+      display: inline-flex;
       align-items: center;
-    }
-    .filter-btn {
-      padding: 6px 16px;
-      border-radius: 20px;
-      border: 1px solid #a1a1aa;
-      background: #f4f4f5;
-      color: #3f3f46;
-      font-size: 0.8rem;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: inherit;
       cursor: pointer;
+      border: none;
       transition: all 0.15s;
     }
-    .filter-btn.active { background: #09090b; color: #fff; border-color: #09090b; }
-
-    .info-box {
-      background: #f0f9ff;
-      border: 1px solid #7dd3fc;
-      color: #0369a1;
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-size: 0.8rem;
-      margin-bottom: 16px;
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
     }
-    .section-header {
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-ghost {
+      background: var(--surface2);
+      color: var(--text2);
+      border: 1px solid var(--border2);
+    }
+    .btn-ghost:hover { background: var(--border); color: var(--text); }
+    .btn-sm { padding: 5px 12px; font-size: 0.78rem; border-radius: 6px; }
+    .btn-danger { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.25); }
+    .btn-danger:hover { background: rgba(248,113,113,0.25); }
+
+    /* ── Client chips ───────────────────────── */
+    .chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 20px;
+      gap: 7px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border2);
+      background: var(--surface2);
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
     }
-    .section-header h2 { font-size: 1.1rem; font-weight: 700; }
+    .chip input { display: none; }
+    .chip-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--border2);
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+    .chip.selected { border-color: var(--accent); background: var(--accent-dim); color: var(--accent-hover); }
+    .chip.selected .chip-dot { background: var(--accent); }
 
-    /* multi-select dropdown */
-    .ms-wrap { position: relative; min-width: 180px; }
+    /* ── Log terminal ───────────────────────── */
+    .log-box {
+      display: none;
+      margin-top: 20px;
+      background: #0a0a0c;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      font-size: 0.78rem;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      max-height: 300px;
+      overflow-y: auto;
+      line-height: 1.7;
+      color: var(--text2);
+    }
+    .log-ok { color: var(--green); }
+    .log-err { color: var(--red); }
+    .log-info { color: #60a5fa; }
+
+    /* ── Progress ───────────────────────────── */
+    .progress-wrap {
+      display: none;
+      margin-top: 14px;
+      background: var(--surface2);
+      border-radius: 999px;
+      height: 4px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+      border-radius: 999px;
+      transition: width 0.3s;
+      width: 0%;
+    }
+
+    /* ── Config table ───────────────────────── */
+    .cfg-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+    }
+    .cfg-table th {
+      background: var(--surface2);
+      color: var(--text3);
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      border-bottom: 1px solid var(--border);
+    }
+    .cfg-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .cfg-table tr:last-child td { border-bottom: none; }
+    .cfg-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+    /* ── Filter pills ───────────────────────── */
+    .filter-row { display: flex; gap: 6px; margin-bottom: 16px; }
+    .filter-pill {
+      padding: 5px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border2);
+      background: transparent;
+      color: var(--text2);
+      font-size: 0.78rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .filter-pill.active { background: var(--accent-dim); color: var(--accent-hover); border-color: var(--accent); }
+
+    /* ── Badges ─────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .badge-ativo { background: rgba(52,211,153,0.12); color: var(--green); }
+    .badge-inativo { background: var(--surface2); color: var(--text3); }
+
+    /* ── Multi-select dropdown ──────────────── */
+    .ms-wrap { position: relative; min-width: 190px; }
     .ms-trigger {
       width: 100%;
-      padding: 7px 28px 7px 10px;
-      border: 1px solid #a1a1aa;
+      padding: 7px 28px 7px 11px;
+      border: 1px solid var(--border2);
       border-radius: 8px;
-      background: #f4f4f5;
-      color: #09090b;
+      background: var(--surface2);
+      color: var(--text);
       font-size: 0.82rem;
       cursor: pointer;
       text-align: left;
@@ -231,139 +395,232 @@
       overflow: hidden;
       text-overflow: ellipsis;
       position: relative;
+      font-family: inherit;
+      transition: border-color 0.15s;
     }
     .ms-trigger::after {
-      content: '▾';
+      content: '';
       position: absolute;
-      right: 9px;
-      top: 50%;
+      right: 10px; top: 50%;
       transform: translateY(-50%);
-      font-size: 0.7rem;
-      color: #71717a;
+      width: 10px; height: 10px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238e8e9a' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-size: contain;
     }
-    .ms-trigger.open { border-color: #09090b; }
+    .ms-trigger.open { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
     .ms-dropdown {
       display: none;
       position: absolute;
-      top: calc(100% + 3px);
+      top: calc(100% + 4px);
       left: 0;
       min-width: 100%;
-      background: #f4f4f5;
-      border: 1px solid #a1a1aa;
-      border-radius: 8px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-      z-index: 50;
-      padding: 6px 0;
-      max-height: 200px;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      z-index: 200;
+      padding: 6px;
+      max-height: 220px;
       overflow-y: auto;
     }
     .ms-dropdown.open { display: block; }
     .ms-option {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 6px 12px;
+      gap: 9px;
+      padding: 7px 10px;
+      border-radius: 6px;
       font-size: 0.82rem;
       cursor: pointer;
       transition: background 0.1s;
+      color: var(--text2);
     }
-    .ms-option:hover { background: #e4e4e7; }
-    .ms-option input { width: auto; margin: 0; padding: 0; cursor: pointer; }
-    .ms-empty { padding: 8px 12px; font-size: 0.8rem; color: #71717a; }
+    .ms-option:hover { background: var(--surface2); color: var(--text); }
+    .ms-option input { width: auto; margin: 0; padding: 0; cursor: pointer; accent-color: var(--accent); }
+    .ms-empty { padding: 10px 12px; font-size: 0.8rem; color: var(--text3); }
 
-    /* progress bar */
-    .progress-bar-wrap {
-      background: #d4d4d8;
-      border-radius: 999px;
-      height: 6px;
-      margin-top: 12px;
-      display: none;
-      overflow: hidden;
+    /* ── Day checkboxes ─────────────────────── */
+    .day-grid { display: flex; gap: 4px; flex-wrap: wrap; }
+    .day-chip {
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border2);
+      background: transparent;
+      color: var(--text3);
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
     }
-    .progress-bar {
-      height: 100%;
-      background: #09090b;
-      border-radius: 999px;
-      transition: width 0.3s;
-      width: 0%;
+    .day-chip.on { background: var(--accent-dim); border-color: var(--accent); color: var(--accent-hover); }
+
+    /* ── Section header ─────────────────────── */
+    .section-hdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
     }
+    .section-hdr h3 { font-size: 1rem; font-weight: 700; }
+
+    /* ── Panel pages ────────────────────────── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── Scrollbar ──────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Trello Manager</h1>
-    <nav>
-      <button class="nav-link active" onclick="showTab('criar')">Criar Cards</button>
-      <button class="nav-link" onclick="showTab('subir')">Subir Conteúdo</button>
-      <button class="nav-link" onclick="showTab('config')">Configurações</button>
-      <a href="/admin.html" id="adminLink" class="nav-link" style="display:none">Usuários</a>
-      <button class="logout-btn" onclick="logout()">Sair</button>
+
+  <!-- Hamburger toggle -->
+  <button class="hamburger sidebar-open" id="hamburger" onclick="toggleSidebar()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <div class="logo-text">Trello Manager</div>
+        <div class="logo-sub">Gestão de conteúdo</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Ferramentas</div>
+
+      <button class="nav-item active" id="nav-criar" onclick="showPage('criar')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Criar Cards
+      </button>
+
+      <button class="nav-item" id="nav-subir" onclick="showPage('subir')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Subir Conteúdo
+      </button>
+
+      <div class="nav-section-label" style="margin-top:8px">Configurações</div>
+
+      <button class="nav-item" id="nav-config" onclick="showPage('config')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 1 0 4.93 19.07 10 10 0 0 0 19.07 4.93Z"/></svg>
+        Clientes
+      </button>
+
+      <a href="/admin.html" class="nav-item" id="adminLink" style="display:none">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Usuários
+      </a>
     </nav>
-  </header>
 
-  <div class="tabs">
-    <div class="tab active" id="tab-criar" onclick="showTab('criar')">Criar Cards</div>
-    <div class="tab" id="tab-subir" onclick="showTab('subir')">Subir Conteúdo</div>
-    <div class="tab" id="tab-config" onclick="showTab('config')">Configurações</div>
-  </div>
+    <div class="sidebar-footer">
+      <div class="user-pill" onclick="logout()">
+        <div class="user-avatar" id="userAvatar">A</div>
+        <div class="user-info">
+          <div class="user-name" id="userName">Carregando...</div>
+          <div class="user-role" id="userRole">–</div>
+        </div>
+        <svg class="logout-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </div>
+    </div>
+  </aside>
 
-  <div class="main">
-    <!-- TAB: Criar Cards -->
-    <div class="panel active" id="panel-criar">
-      <div class="row" style="margin-bottom:18px">
-        <div class="form-group" style="margin:0">
-          <label>Data início</label>
-          <input type="date" id="dataInicio">
-        </div>
-        <div class="form-group" style="margin:0">
-          <label>Data fim</label>
-          <input type="date" id="dataFim">
-        </div>
-      </div>
-      <div class="form-group">
-        <label>Clientes ativos (selecione para criar cards)</label>
-        <div id="clienteCheckboxes" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px"></div>
-      </div>
-      <button class="btn" id="btnCriar" onclick="criarCards()">Criar Cards</button>
-      <div class="progress-bar-wrap" id="progressWrap">
-        <div class="progress-bar" id="progressBar"></div>
-      </div>
-      <div id="log"></div>
+  <!-- Main -->
+  <div class="main-wrap" id="mainWrap">
+
+    <div class="topbar">
+      <h2 id="topbarTitle">Criar Cards</h2>
+      <span class="topbar-sub" id="topbarSub">Crie cards no Trello por período</span>
     </div>
 
-    <!-- TAB: Subir Conteúdo -->
-    <div class="panel" id="panel-subir">
-      <div class="form-group">
-        <label>Cliente</label>
-        <select id="clienteSubir">
-          <option value="">Selecione um cliente...</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Conteúdo (cole aqui com as datas)</label>
-        <textarea id="conteudo" rows="14" placeholder="Cole aqui o conteúdo com datas no formato:&#10;SEGUNDA-FEIRA — 18 de maio&#10;Texto do card...&#10;&#10;TERÇA-FEIRA — 19/05&#10;Texto..."></textarea>
-      </div>
-      <button class="btn" id="btnSubir" onclick="subirConteudo()">Subir Conteúdo</button>
-      <div class="progress-bar-wrap" id="progressWrapSubir">
-        <div class="progress-bar" id="progressBarSubir"></div>
-      </div>
-      <div id="logSubir"></div>
-    </div>
+    <div class="content">
 
-    <!-- TAB: Configurações -->
-    <div class="panel" id="panel-config">
-      <div class="section-header">
-        <h2>Clientes (Boards do Trello)</h2>
-        <button class="btn btn-secondary btn-sm" id="btnSyncBoards" onclick="sincronizarBoards()">↻ Sincronizar Boards</button>
+      <!-- PAGE: Criar Cards -->
+      <div class="page active" id="page-criar">
+        <div class="card">
+          <div class="card-title">Período</div>
+          <div class="row-2">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Data início</label>
+              <input type="date" id="dataInicio">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Data fim</label>
+              <input type="date" id="dataFim">
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Clientes</div>
+          <div class="chip-grid" id="clienteCheckboxes">
+            <span style="color:var(--text3);font-size:0.85rem">Carregando clientes...</span>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="btnCriar" onclick="criarCards()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          Criar Cards
+        </button>
+        <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+        <div class="log-box" id="log"></div>
       </div>
-      <div class="filter-row">
-        <button class="filter-btn active" id="filtroAtivos" onclick="setFiltro('ativos')">Ativos</button>
-        <button class="filter-btn" id="filtroInativos" onclick="setFiltro('inativos')">Inativos</button>
+
+      <!-- PAGE: Subir Conteúdo -->
+      <div class="page" id="page-subir">
+        <div class="card">
+          <div class="card-title">Destino</div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Cliente / Lista</label>
+            <select id="clienteSubir">
+              <option value="">Selecione cliente / lista...</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Conteúdo</div>
+          <textarea id="conteudo" rows="14" placeholder="Cole aqui o conteúdo com datas, ex:&#10;&#10;SEGUNDA-FEIRA — 18 de maio&#10;Texto do card...&#10;&#10;TERÇA-FEIRA — 19/05&#10;Texto..."></textarea>
+        </div>
+
+        <button class="btn btn-primary" id="btnSubir" onclick="subirConteudo()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Subir Conteúdo
+        </button>
+        <div class="progress-wrap" id="progressWrapSubir"><div class="progress-bar" id="progressBarSubir"></div></div>
+        <div class="log-box" id="logSubir"></div>
       </div>
-      <div id="configTable"><p style="color:#71717a;font-size:0.85rem">Carregando boards...</p></div>
-      <div style="margin-top:16px">
-        <button class="btn" onclick="salvarConfig()">Salvar Configurações</button>
+
+      <!-- PAGE: Clientes / Config -->
+      <div class="page" id="page-config">
+        <div class="section-hdr">
+          <h3>Boards do Trello</h3>
+          <button class="btn btn-ghost btn-sm" id="btnSyncBoards" onclick="sincronizarBoards()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-3.69"/></svg>
+            Sincronizar
+          </button>
+        </div>
+
+        <div class="filter-row">
+          <button class="filter-pill active" id="filtroAtivos" onclick="setFiltro('ativos')">Ativos</button>
+          <button class="filter-pill" id="filtroInativos" onclick="setFiltro('inativos')">Inativos</button>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden">
+          <div id="configTable" style="padding:16px;color:var(--text3);font-size:0.85rem">Carregando boards...</div>
+        </div>
+
+        <div style="margin-top:16px">
+          <button class="btn btn-primary" onclick="salvarConfig()">Salvar Configurações</button>
+        </div>
       </div>
+
     </div>
   </div>
 
@@ -380,7 +637,13 @@
         trelloKey = payload.trello_api_key || '';
         trelloToken = payload.trello_token || '';
       } catch { logout(); }
+
+      // user info
+      document.getElementById('userName').textContent = tmUser.name || tmUser.email || '–';
+      document.getElementById('userRole').textContent = tmUser.role === 'admin' ? 'Administrador' : 'Usuário';
+      document.getElementById('userAvatar').textContent = (tmUser.name || 'U')[0].toUpperCase();
       if (tmUser.role === 'admin') document.getElementById('adminLink').style.display = '';
+
       await sincronizarBoards();
       renderClienteCheckboxes();
       populateClienteSubir();
@@ -392,21 +655,34 @@
       window.location.href = '/login.html';
     }
 
-    // ── Tabs ──────────────────────────────────────────────
-    function showTab(name) {
-      ['criar','subir','config'].forEach(t => {
-        document.getElementById(`panel-${t}`).classList.toggle('active', t === name);
-        document.getElementById(`tab-${t}`).classList.toggle('active', t === name);
+    // ── Sidebar ───────────────────────────────────────────
+    let sidebarOpen = true;
+    function toggleSidebar() {
+      sidebarOpen = !sidebarOpen;
+      document.getElementById('sidebar').classList.toggle('collapsed', !sidebarOpen);
+      document.getElementById('mainWrap').classList.toggle('expanded', !sidebarOpen);
+      document.getElementById('hamburger').classList.toggle('sidebar-open', sidebarOpen);
+    }
+
+    // ── Pages ─────────────────────────────────────────────
+    const PAGE_META = {
+      criar: { title: 'Criar Cards', sub: 'Crie cards no Trello por período' },
+      subir: { title: 'Subir Conteúdo', sub: 'Envie descrições para cards existentes' },
+      config: { title: 'Clientes', sub: 'Configure boards e listas por cliente' },
+    };
+
+    function showPage(name) {
+      ['criar','subir','config'].forEach(p => {
+        document.getElementById(`page-${p}`).classList.toggle('active', p === name);
+        document.getElementById(`nav-${p}`)?.classList.toggle('active', p === name);
       });
-      document.querySelectorAll('header .nav-link').forEach(el => {
-        el.classList.toggle('active', el.getAttribute('onclick') === `showTab('${name}')`);
-      });
+      document.getElementById('topbarTitle').textContent = PAGE_META[name]?.title || '';
+      document.getElementById('topbarSub').textContent = PAGE_META[name]?.sub || '';
       if (name === 'config') renderConfig();
     }
 
     // ── Storage ───────────────────────────────────────────
     const STORAGE_KEY = 'tm_clientes_v3';
-
     function loadClientes() {
       try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
       catch { return []; }
@@ -431,9 +707,8 @@
 
     async function sincronizarBoards() {
       const btn = document.getElementById('btnSyncBoards');
-      btn.disabled = true;
-      btn.textContent = 'Sincronizando...';
-      document.getElementById('configTable').innerHTML = '<p style="color:#71717a;font-size:0.85rem">Buscando boards...</p>';
+      if (btn) { btn.disabled = true; btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-3.69"/></svg> Sincronizando...'; }
+      document.getElementById('configTable').innerHTML = '<span style="color:var(--text3)">Buscando boards...</span>';
       try {
         const boards = await tFetch('/members/me/boards?filter=open&fields=id,name');
         for (const b of boards) {
@@ -449,10 +724,9 @@
         renderClienteCheckboxes();
         populateClienteSubir();
       } catch (err) {
-        document.getElementById('configTable').innerHTML = `<p style="color:#b91c1c;font-size:0.85rem">Erro ao buscar boards: ${err.message}</p>`;
+        document.getElementById('configTable').innerHTML = `<span style="color:var(--red)">Erro ao buscar boards: ${err.message}</span>`;
       }
-      btn.disabled = false;
-      btn.textContent = '↻ Sincronizar Boards';
+      if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-3.69"/></svg> Sincronizar'; }
       renderConfig();
     }
 
@@ -476,13 +750,11 @@
 
     // ── Date helpers ──────────────────────────────────────
     const DIAS_NOME = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
-    const MESES_ABREV = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
     function formatarTitulo(date) {
       const dia = String(date.getDate()).padStart(2,'0');
       const mes = String(date.getMonth()+1).padStart(2,'0');
-      const nomeDia = DIAS_NOME[date.getDay()];
-      return `${dia}/${mes} - ${nomeDia}`;
+      return `${dia}/${mes} - ${DIAS_NOME[date.getDay()]}`;
     }
 
     function diasNoRange(inicio, fim, diasSemana) {
@@ -496,7 +768,7 @@
       return dias;
     }
 
-    // ── Log helpers ───────────────────────────────────────
+    // ── Log ───────────────────────────────────────────────
     function logMsg(el, msg, cls = '') {
       el.style.display = 'block';
       el.innerHTML += `<div${cls ? ` class="${cls}"` : ''}>${msg}</div>`;
@@ -506,18 +778,29 @@
     // ── Criar Cards ───────────────────────────────────────
     function getListIds(c) {
       if (c.listIds && c.listIds.length) return c.listIds;
-      if (c.listId) return [c.listId]; // compat legado
+      if (c.listId) return [c.listId];
       return [];
     }
 
     function renderClienteCheckboxes() {
       const comLista = clientes.filter(c => c.ativo && getListIds(c).length > 0);
-      document.getElementById('clienteCheckboxes').innerHTML = comLista.length
-        ? comLista.map(c => `
-            <label style="display:flex;align-items:center;gap:6px;background:#f4f4f5;border:1px solid #a1a1aa;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:0.85rem;font-weight:500;">
-              <input type="checkbox" checked data-idx="${clientes.indexOf(c)}" style="width:auto;margin:0;padding:0;"> ${c.nome}
-            </label>`).join('')
-        : '<p style="color:#71717a;font-size:0.85rem">Nenhum cliente ativo com lista configurada.</p>';
+      const el = document.getElementById('clienteCheckboxes');
+      if (!comLista.length) {
+        el.innerHTML = '<span style="color:var(--text3);font-size:0.85rem">Nenhum cliente ativo com lista configurada.</span>';
+        return;
+      }
+      el.innerHTML = comLista.map(c => {
+        const gi = clientes.indexOf(c);
+        return `<label class="chip selected" id="chip-${gi}" onclick="toggleChip(${gi},this)">
+          <input type="checkbox" checked data-idx="${gi}">
+          <span class="chip-dot"></span>${c.nome}
+        </label>`;
+      }).join('');
+    }
+
+    function toggleChip(gi, el) {
+      el.classList.toggle('selected');
+      el.querySelector('input').checked = el.classList.contains('selected');
     }
 
     async function criarCards() {
@@ -530,15 +813,12 @@
       if (!selecionados.length) return alert('Selecione ao menos um cliente');
 
       const logEl = document.getElementById('log');
-      logEl.innerHTML = '';
-      logEl.style.display = 'block';
+      logEl.innerHTML = ''; logEl.style.display = 'block';
       const btn = document.getElementById('btnCriar');
       btn.disabled = true;
-
-      const progressWrap = document.getElementById('progressWrap');
-      const progressBar = document.getElementById('progressBar');
-      progressWrap.style.display = 'block';
-      progressBar.style.width = '0%';
+      const pw = document.getElementById('progressWrap');
+      const pb = document.getElementById('progressBar');
+      pw.style.display = 'block'; pb.style.width = '0%';
 
       let total = 0, done = 0;
       selecionados.forEach(c => total += diasNoRange(inicio, fim, c.diasSemana).length * getListIds(c).length);
@@ -554,17 +834,11 @@
             const titulo = formatarTitulo(d);
             try {
               const existing = await buscarCard(listId, titulo);
-              if (existing) {
-                logMsg(logEl, `    ↷ ${titulo} — já existe`);
-              } else {
-                await criarCard(listId, titulo, '');
-                logMsg(logEl, `    ✓ ${titulo}`, 'log-ok');
-              }
-            } catch (err) {
-              logMsg(logEl, `    ✗ ${titulo}: ${err.message}`, 'log-err');
-            }
+              if (existing) { logMsg(logEl, `    ↷ ${titulo} — já existe`); }
+              else { await criarCard(listId, titulo, ''); logMsg(logEl, `    ✓ ${titulo}`, 'log-ok'); }
+            } catch (err) { logMsg(logEl, `    ✗ ${titulo}: ${err.message}`, 'log-err'); }
             done++;
-            progressBar.style.width = `${Math.round(done/total*100)}%`;
+            pb.style.width = `${Math.round(done/total*100)}%`;
             await new Promise(r => setTimeout(r, 150));
           }
         }
@@ -587,6 +861,7 @@
         });
       });
     }
+
     const MESES_MAP = {
       janeiro:'01',fevereiro:'02','março':'03',marco:'03',abril:'04',
       maio:'05',junho:'06',julho:'07',agosto:'08',setembro:'09',
@@ -596,22 +871,14 @@
     };
     const DIA_NOMES_RE = /SEGUNDA|TER[CÇ]A|QUARTA|QUINTA|SEXTA|S[AÁ]BADO|DOMINGO/i;
 
-    function normStr(s) {
-      return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-    }
+    function normStr(s) { return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
 
     function extrairData(linha) {
       if (!DIA_NOMES_RE.test(linha)) return null;
-      // DD/MM
       const m1 = linha.match(/(\d{1,2})\/(\d{2})/);
       if (m1) return `${m1[1].padStart(2,'0')}/${m1[2]}`;
-      // DD de MÊSNAME ou DD MÊSNAME
       const m2 = linha.match(/(\d{1,2})\s+(?:de\s+)?([a-záàâãéèêíïóôõöúüç]+)/i);
-      if (m2) {
-        const mesNorm = normStr(m2[2]);
-        const mm = MESES_MAP[mesNorm];
-        if (mm) return `${m2[1].padStart(2,'0')}/${mm}`;
-      }
+      if (m2) { const mm = MESES_MAP[normStr(m2[2])]; if (mm) return `${m2[1].padStart(2,'0')}/${mm}`; }
       return null;
     }
 
@@ -621,15 +888,11 @@
       let atual = null;
       for (const linha of linhas) {
         const data = extrairData(linha.trim());
-        if (data) {
-          if (atual) blocos.push(atual);
-          atual = { data, titulo: linha.trim(), linhas: [] };
-        } else if (atual) {
-          atual.linhas.push(linha);
-        }
+        if (data) { if (atual) blocos.push(atual); atual = { data, linhas: [] }; }
+        else if (atual) atual.linhas.push(linha);
       }
       if (atual) blocos.push(atual);
-      return blocos.map(b => ({ data: b.data, titulo: b.titulo, desc: b.linhas.join('\n').trim() }));
+      return blocos.map(b => ({ data: b.data, desc: b.linhas.join('\n').trim() }));
     }
 
     async function subirConteudo() {
@@ -641,18 +904,15 @@
       if (!texto) return alert('Cole o conteúdo');
 
       const blocos = parsearConteudo(texto);
-      if (!blocos.length) return alert('Nenhuma data encontrada no conteúdo. Use formatos como "SEGUNDA-FEIRA — 18 de maio" ou "SEGUNDA 18/05".');
+      if (!blocos.length) return alert('Nenhuma data encontrada. Use formatos como "SEGUNDA-FEIRA — 18 de maio" ou "SEGUNDA 18/05".');
 
       const logEl = document.getElementById('logSubir');
-      logEl.innerHTML = '';
-      logEl.style.display = 'block';
+      logEl.innerHTML = ''; logEl.style.display = 'block';
       const btn = document.getElementById('btnSubir');
       btn.disabled = true;
-
-      const progressWrap = document.getElementById('progressWrapSubir');
-      const progressBar = document.getElementById('progressBarSubir');
-      progressWrap.style.display = 'block';
-      progressBar.style.width = '0%';
+      const pw = document.getElementById('progressWrapSubir');
+      const pb = document.getElementById('progressBarSubir');
+      pw.style.display = 'block'; pb.style.width = '0%';
 
       const nomeLista = (c.listas||[]).find(l => l.id === listId)?.name || listId;
       logMsg(logEl, `Enviando ${blocos.length} blocos para ${c.nome} — ${nomeLista}...`, 'log-info');
@@ -662,16 +922,10 @@
         try {
           const cards = await tFetch(`/lists/${listId}/cards`);
           const card = cards.find(card => card.name.startsWith(b.data));
-          if (!card) {
-            logMsg(logEl, `  ⚠ ${b.data}: card não encontrado na lista`, 'log-err');
-          } else {
-            await atualizarCard(card.id, b.desc);
-            logMsg(logEl, `  ✓ ${card.name}`, 'log-ok');
-          }
-        } catch (err) {
-          logMsg(logEl, `  ✗ ${b.data}: ${err.message}`, 'log-err');
-        }
-        progressBar.style.width = `${Math.round((i+1)/blocos.length*100)}%`;
+          if (!card) { logMsg(logEl, `  ⚠ ${b.data}: card não encontrado`, 'log-err'); }
+          else { await atualizarCard(card.id, b.desc); logMsg(logEl, `  ✓ ${card.name}`, 'log-ok'); }
+        } catch (err) { logMsg(logEl, `  ✗ ${b.data}: ${err.message}`, 'log-err'); }
+        pb.style.width = `${Math.round((i+1)/blocos.length*100)}%`;
         await new Promise(r => setTimeout(r, 200));
       }
       logMsg(logEl, '<br>Concluído!', 'log-ok');
@@ -692,72 +946,55 @@
 
     function renderConfig() {
       const lista = clientes.filter(c => filtroAtual === 'ativos' ? c.ativo : !c.ativo);
-      if (!lista.length) {
-        document.getElementById('configTable').innerHTML = `<p style="color:#71717a;font-size:0.85rem">Nenhum cliente ${filtroAtual}.</p>`;
-        return;
-      }
+      const el = document.getElementById('configTable');
+      if (!lista.length) { el.innerHTML = `<p style="padding:4px;color:var(--text3);font-size:0.85rem">Nenhum cliente ${filtroAtual}.</p>`; return; }
+
       const rows = lista.map(c => {
         const gi = clientes.indexOf(c);
         const ids = getListIds(c);
         const nListas = (c.listas||[]).length;
-        const labelListas = ids.length === 0
-          ? 'Selecione listas...'
-          : ids.length === 1
-            ? ((c.listas||[]).find(l => l.id === ids[0])?.name || '1 lista')
-            : `${ids.length} listas selecionadas`;
+        const label = ids.length === 0 ? 'Selecione listas...'
+          : ids.length === 1 ? ((c.listas||[]).find(l => l.id === ids[0])?.name || '1 lista')
+          : `${ids.length} listas selecionadas`;
         const msOpts = nListas
-          ? (c.listas).map(l => `
-              <label class="ms-option">
-                <input type="checkbox" ${ids.includes(l.id)?'checked':''}
-                  onchange="toggleLista(${gi},'${l.id}',this.checked,this.closest('.ms-wrap'))">
-                ${l.name}
-              </label>`).join('')
+          ? c.listas.map(l => `<label class="ms-option"><input type="checkbox" ${ids.includes(l.id)?'checked':''} onchange="toggleLista(${gi},'${l.id}',this.checked,this.closest('.ms-wrap'))">${l.name}</label>`).join('')
           : `<div class="ms-empty">Clique em ↻ para carregar</div>`;
-        const diasCheck = [1,2,3,4,5,6,0].map(d => `
-          <label style="display:flex;align-items:center;gap:3px;font-size:0.78rem;cursor:pointer">
-            <input type="checkbox" ${(c.diasSemana||[1,2,3,4,5]).includes(d)?'checked':''}
-              onchange="toggleDia(${gi},${d},this.checked)" style="width:auto;margin:0;padding:0">
-            ${DIAS_LABELS[d]}
-          </label>`).join('');
-        return `
-          <tr>
-            <td style="font-weight:600">${c.nome}</td>
-            <td>
-              <div style="display:flex;gap:6px;align-items:center">
-                <div class="ms-wrap">
-                  <button class="ms-trigger" onclick="toggleDropdown(this)">${labelListas}</button>
-                  <div class="ms-dropdown">${msOpts}</div>
-                </div>
-                <button class="btn btn-secondary btn-sm" onclick="fetchListasCliente(${gi})">↻</button>
+        const diasHtml = [1,2,3,4,5,6,0].map(d =>
+          `<span class="day-chip ${(c.diasSemana||[1,2,3,4,5]).includes(d)?'on':''}" onclick="toggleDiaChip(${gi},${d},this)">${DIAS_LABELS[d]}</span>`).join('');
+        return `<tr>
+          <td style="font-weight:600;color:var(--text)">${c.nome}</td>
+          <td>
+            <div style="display:flex;gap:6px;align-items:center">
+              <div class="ms-wrap">
+                <button class="ms-trigger" onclick="toggleDropdown(this)">${label}</button>
+                <div class="ms-dropdown">${msOpts}</div>
               </div>
-            </td>
-            <td><div style="display:flex;gap:8px;flex-wrap:wrap">${diasCheck}</div></td>
-            <td>
-              <div style="display:flex;gap:6px">
-                <span class="badge ${c.ativo?'badge-ativo':'badge-inativo'}">${c.ativo?'Ativo':'Inativo'}</span>
-                <button class="btn btn-sm ${c.ativo?'btn-secondary':'btn'}" onclick="toggleAtivo(${gi})">${c.ativo?'Desativar':'Ativar'}</button>
-              </div>
-            </td>
-          </tr>`;
+              <button class="btn btn-ghost btn-sm" onclick="fetchListasCliente(${gi})">↻</button>
+            </div>
+          </td>
+          <td><div class="day-grid">${diasHtml}</div></td>
+          <td>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span class="badge ${c.ativo?'badge-ativo':'badge-inativo'}">${c.ativo?'● Ativo':'○ Inativo'}</span>
+              <button class="btn btn-ghost btn-sm" onclick="toggleAtivo(${gi})">${c.ativo?'Desativar':'Ativar'}</button>
+            </div>
+          </td>
+        </tr>`;
       }).join('');
 
-      document.getElementById('configTable').innerHTML = `
-        <table class="config-table">
-          <thead><tr>
-            <th>Board (Cliente)</th><th>Lista</th><th>Dias da semana</th><th>Status</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
+      el.innerHTML = `<table class="cfg-table">
+        <thead><tr><th>Cliente</th><th>Listas</th><th>Dias da semana</th><th>Status</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
     }
 
+    // ── Dropdown ──────────────────────────────────────────
     function toggleDropdown(btn) {
       const wrap = btn.closest('.ms-wrap');
       const drop = wrap.querySelector('.ms-dropdown');
       const isOpen = drop.classList.contains('open');
-      // fecha todos os outros abertos
       document.querySelectorAll('.ms-dropdown.open').forEach(d => {
-        d.classList.remove('open');
-        d.previousElementSibling.classList.remove('open');
+        d.classList.remove('open'); d.previousElementSibling.classList.remove('open');
       });
       if (!isOpen) { drop.classList.add('open'); btn.classList.add('open'); }
     }
@@ -765,8 +1002,7 @@
     document.addEventListener('click', e => {
       if (!e.target.closest('.ms-wrap')) {
         document.querySelectorAll('.ms-dropdown.open').forEach(d => {
-          d.classList.remove('open');
-          d.previousElementSibling.classList.remove('open');
+          d.classList.remove('open'); d.previousElementSibling.classList.remove('open');
         });
       }
     });
@@ -775,15 +1011,18 @@
       if (!clientes[gi].listIds) clientes[gi].listIds = [];
       if (checked && !clientes[gi].listIds.includes(lid)) clientes[gi].listIds.push(lid);
       if (!checked) clientes[gi].listIds = clientes[gi].listIds.filter(id => id !== lid);
-      // atualiza label do trigger sem re-render
       const ids = clientes[gi].listIds;
       const c = clientes[gi];
-      const label = ids.length === 0
-        ? 'Selecione listas...'
-        : ids.length === 1
-          ? ((c.listas||[]).find(l => l.id === ids[0])?.name || '1 lista')
-          : `${ids.length} listas selecionadas`;
+      const label = ids.length === 0 ? 'Selecione listas...'
+        : ids.length === 1 ? ((c.listas||[]).find(l => l.id === ids[0])?.name || '1 lista')
+        : `${ids.length} listas selecionadas`;
       wrap.querySelector('.ms-trigger').textContent = label;
+    }
+
+    function toggleDiaChip(gi, dia, el) {
+      const ds = clientes[gi].diasSemana || [];
+      if (el.classList.contains('on')) { clientes[gi].diasSemana = ds.filter(d => d !== dia); el.classList.remove('on'); }
+      else { if (!ds.includes(dia)) ds.push(dia); clientes[gi].diasSemana = ds; el.classList.add('on'); }
     }
 
     function toggleDia(gi, dia, checked) {
@@ -795,16 +1034,12 @@
 
     function toggleAtivo(gi) {
       clientes[gi].ativo = !clientes[gi].ativo;
-      renderConfig();
-      renderClienteCheckboxes();
-      populateClienteSubir();
+      renderConfig(); renderClienteCheckboxes(); populateClienteSubir();
     }
 
     async function fetchListasCliente(gi) {
-      try {
-        clientes[gi].listas = await fetchListas(clientes[gi].boardId);
-        renderConfig();
-      } catch { alert('Erro ao buscar listas. Verifique o Board ID.'); }
+      try { clientes[gi].listas = await fetchListas(clientes[gi].boardId); renderConfig(); }
+      catch { alert('Erro ao buscar listas.'); }
     }
 
     function salvarConfig() {
