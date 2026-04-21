@@ -470,6 +470,41 @@
     .page { display: none; }
     .page.active { display: block; }
 
+    /* ── Profile modal ──────────────────────── */
+    .modal-bg {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-bg.open { display: flex; }
+    .modal-box {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 14px;
+      padding: 28px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 16px 60px rgba(0,0,0,0.5);
+    }
+    .modal-box h3 { font-size: 1rem; font-weight: 700; margin-bottom: 20px; }
+    .profile-field { margin-bottom: 16px; }
+    .profile-field .form-label { margin-bottom: 5px; }
+    .drive-status-box {
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border2);
+      background: var(--surface2);
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .modal-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+
     /* ── Scrollbar ──────────────────────────── */
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -527,7 +562,7 @@
     </nav>
 
     <div class="sidebar-footer">
-      <div class="user-pill" onclick="logout()">
+      <div class="user-pill" onclick="openProfileModal()">
         <div class="user-avatar" id="userAvatar">A</div>
         <div class="user-info">
           <div class="user-name" id="userName">Carregando...</div>
@@ -725,6 +760,44 @@
         <button class="btn btn-primary" onclick="salvarConfig()">Salvar Configurações</button>
       </div>
 
+    </div>
+  </div>
+
+  <!-- Modal de perfil -->
+  <div class="modal-bg" id="profileModal">
+    <div class="modal-box">
+      <h3>Meu Perfil</h3>
+
+      <div class="profile-field">
+        <div class="form-label">Nome</div>
+        <div style="font-size:0.9rem;font-weight:600" id="profileName"></div>
+      </div>
+      <div class="profile-field">
+        <div class="form-label">Email</div>
+        <div style="font-size:0.85rem;color:var(--text2)" id="profileEmail"></div>
+      </div>
+      <div class="profile-field">
+        <div class="form-label">Perfil</div>
+        <div style="font-size:0.85rem;color:var(--text2)" id="profileRole"></div>
+      </div>
+
+      <div style="border-top:1px solid var(--border);margin:20px 0"></div>
+
+      <div class="profile-field">
+        <div class="form-label" style="margin-bottom:10px">Google Drive</div>
+        <div class="drive-status-box" id="profileDriveBox">
+          <span id="profileDriveLabel">Verificando...</span>
+          <div id="profileDriveBtns"></div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost btn-sm" onclick="closeProfileModal()">Fechar</button>
+        <button class="btn btn-danger btn-sm" onclick="logout()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sair
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1044,6 +1117,53 @@
       btn.disabled = false;
     }
 
+    // ── Modal de perfil ───────────────────────────────────
+    function openProfileModal() {
+      document.getElementById('profileName').textContent = tmUser.name || '–';
+      document.getElementById('profileEmail').textContent = tmUser.email || '–';
+      document.getElementById('profileRole').textContent = tmUser.role === 'admin' ? 'Administrador' : 'Usuário';
+      document.getElementById('profileModal').classList.add('open');
+      loadProfileDriveStatus();
+    }
+
+    function closeProfileModal() {
+      document.getElementById('profileModal').classList.remove('open');
+    }
+
+    document.getElementById('profileModal').addEventListener('click', e => {
+      if (e.target === e.currentTarget) closeProfileModal();
+    });
+
+    async function loadProfileDriveStatus() {
+      document.getElementById('profileDriveLabel').textContent = 'Verificando...';
+      document.getElementById('profileDriveBtns').innerHTML = '';
+      try {
+        const { connected, email } = await driveApi('/status');
+        document.getElementById('profileDriveLabel').innerHTML = connected
+          ? `<span style="color:var(--green)">✓ ${email}</span>`
+          : `<span style="color:var(--text3)">Não conectado</span>`;
+        document.getElementById('profileDriveBtns').innerHTML = connected
+          ? `<button class="btn btn-ghost btn-sm" onclick="profileDisconnectDrive()">Desconectar</button>`
+          : `<button class="btn btn-primary btn-sm" onclick="profileConnectDrive()">
+               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+               Conectar
+             </button>`;
+      } catch {
+        document.getElementById('profileDriveLabel').textContent = 'Erro ao verificar';
+      }
+    }
+
+    function profileConnectDrive() {
+      window.location.href = `/api/drive/authorize?token=${encodeURIComponent(token)}`;
+    }
+
+    async function profileDisconnectDrive() {
+      if (!confirm('Desconectar o Google Drive?')) return;
+      await driveApi('/disconnect', { method: 'DELETE' });
+      loadProfileDriveStatus();
+      checkDriveStatus();
+    }
+
     // ── Google Drive ──────────────────────────────────────
     let driveConnected = false;
     let driveFolderStack = []; // [{id, name}]
@@ -1071,10 +1191,10 @@
           : 'Não conectado ao Google Drive';
         document.getElementById('driveConnectBtns').innerHTML = connected
           ? `<button class="btn btn-ghost btn-sm" onclick="disconnectDrive()">Desconectar</button>`
-          : `<a href="/api/drive/authorize" class="btn btn-primary btn-sm">
+          : `<button class="btn btn-primary btn-sm" onclick="profileConnectDrive()">
                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
                Conectar Google Drive
-             </a>`;
+             </button>`;
         document.getElementById('driveMain').style.display = connected ? 'block' : 'none';
         if (connected) populateDriveClientes();
       } catch (e) {

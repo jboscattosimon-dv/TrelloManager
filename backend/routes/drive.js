@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken');
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 function authMiddleware(req, res, next) {
-  const token = req.headers.authorization?.split(' ')[1];
+  const token = req.headers.authorization?.split(' ')[1] || req.query.token;
   if (!token) return res.status(401).json({ error: 'Não autorizado' });
   try { req.user = jwt.verify(token, process.env.JWT_SECRET); next(); }
   catch { res.status(401).json({ error: 'Token inválido' }); }

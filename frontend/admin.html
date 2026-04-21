@@ -221,10 +221,6 @@
         <label>Trello Token</label>
         <input type="text" id="fToken" placeholder="Token do Trello">
       </div>
-      <div class="form-group" id="googleStatusGroup" style="display:none">
-        <label>Google Drive</label>
-        <div id="googleStatus" style="font-size:0.85rem;padding:8px 10px;background:#f4f4f5;border-radius:8px;border:1px solid #a1a1aa"></div>
-      </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
         <button class="btn" id="saveBtn" onclick="saveUser()">Salvar</button>
@@ -301,13 +297,6 @@
       document.getElementById('fToken').value = u ? (u.trello_token || '') : '';
       document.getElementById('passwordHint').style.display = u ? 'block' : 'none';
       document.getElementById('modalError').style.display = 'none';
-      const googleGroup = document.getElementById('googleStatusGroup');
-      if (u) {
-        googleGroup.style.display = 'block';
-        document.getElementById('googleStatus').innerHTML = u.google_email
-          ? `<span style="color:#15803d">✓ Conectado como ${u.google_email}</span>`
-          : '<span style="color:#71717a">Não conectado — o usuário deve conectar no próprio perfil</span>';
-      } else { googleGroup.style.display = 'none'; }
       document.getElementById('modalOverlay').classList.add('open');
     }
 
