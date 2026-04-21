@@ -10,6 +10,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/drive', require('./routes/drive'));
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/login.html'));

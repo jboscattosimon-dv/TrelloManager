@@ -55,7 +55,7 @@ router.post('/login', async (req, res) => {
 router.get('/users', authMiddleware, adminMiddleware, async (req, res) => {
   const { data, error } = await supabase
     .from('users')
-    .select('id, name, email, role, created_at')
+    .select('id, name, email, role, google_email, created_at')
     .order('created_at', { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
@@ -98,7 +98,7 @@ router.put('/users/:id', authMiddleware, adminMiddleware, async (req, res) => {
 
   const { data, error } = await supabase.from('users')
     .update(updates).eq('id', req.params.id)
-    .select('id, name, email, role, created_at').single();
+    .select('id, name, email, role, google_email, created_at').single();
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });

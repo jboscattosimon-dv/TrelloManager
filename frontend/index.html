@@ -510,6 +510,11 @@
 
       <div class="nav-section-label" style="margin-top:8px">Configurações</div>
 
+      <button class="nav-item" id="nav-drive" onclick="showPage('drive')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        Google Drive
+      </button>
+
       <button class="nav-item" id="nav-config" onclick="showPage('config')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 1 0 4.93 19.07 10 10 0 0 0 19.07 4.93Z"/></svg>
         Clientes
@@ -599,6 +604,101 @@
         <div class="log-box" id="logSubir"></div>
       </div>
 
+      <!-- PAGE: Google Drive -->
+      <div class="page" id="page-drive">
+
+        <!-- Status de conexão -->
+        <div class="card" id="driveConnectCard">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+            <div>
+              <div style="font-weight:700;margin-bottom:4px">Google Drive</div>
+              <div style="font-size:0.82rem;color:var(--text2)" id="driveStatusLabel">Verificando conexão...</div>
+            </div>
+            <div id="driveConnectBtns"></div>
+          </div>
+        </div>
+
+        <!-- Conteúdo principal (oculto até conectar) -->
+        <div id="driveMain" style="display:none">
+
+          <!-- Passo 1: Cliente -->
+          <div class="card">
+            <div class="card-title">1 · Selecione o cliente</div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Cliente</label>
+              <select id="driveCliente" onchange="onDriveClienteChange()">
+                <option value="">Selecione...</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Passo 2: Pasta raiz detectada via Trello -->
+          <div class="card" id="drivePastaCard" style="display:none">
+            <div class="card-title">2 · Pasta do Drive (detectada via Trello)</div>
+            <div id="drivePastaInfo" style="font-size:0.85rem;color:var(--text2);margin-bottom:12px"></div>
+            <!-- Navegação de subpastas -->
+            <div style="margin-bottom:10px">
+              <div class="form-label">Subpastas</div>
+              <div id="driveBreadcrumb" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;font-size:0.8rem;color:var(--text3)"></div>
+              <div id="driveSubfolders" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+            </div>
+          </div>
+
+          <!-- Passo 3: Criar pastas -->
+          <div class="card" id="driveCriarCard" style="display:none">
+            <div class="card-title">3 · Criar pastas de datas</div>
+            <div class="row-2" style="margin-bottom:16px">
+              <div class="form-group" style="margin:0">
+                <label class="form-label">Mês</label>
+                <select id="driveMes">
+                  <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+                  <option value="3">Março</option><option value="4">Abril</option>
+                  <option value="5">Maio</option><option value="6">Junho</option>
+                  <option value="7">Julho</option><option value="8">Agosto</option>
+                  <option value="9">Setembro</option><option value="10">Outubro</option>
+                  <option value="11">Novembro</option><option value="12">Dezembro</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0">
+                <label class="form-label">Ano</label>
+                <input type="number" id="driveAno" value="2026" min="2024" max="2030">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Dias da semana</label>
+              <div class="day-grid" id="driveDias">
+                <span class="day-chip on" data-d="1">Seg</span>
+                <span class="day-chip on" data-d="2">Ter</span>
+                <span class="day-chip on" data-d="3">Qua</span>
+                <span class="day-chip on" data-d="4">Qui</span>
+                <span class="day-chip on" data-d="5">Sex</span>
+                <span class="day-chip" data-d="6">Sáb</span>
+                <span class="day-chip" data-d="0">Dom</span>
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Formato do nome da pasta</label>
+              <select id="driveFormato">
+                <option value="dd">01  (só o dia)</option>
+                <option value="dd/mm" selected>01/05  (dia/mês)</option>
+                <option value="dd-mm">01-05  (dia-mês)</option>
+                <option value="nome dd/mm">Seg 01/05  (dia semana + data)</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="driveCriarBtnWrap" style="display:none">
+            <button class="btn btn-primary" id="btnCriarPastas" onclick="criarPastasDrive()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+              Criar Pastas
+            </button>
+          </div>
+          <div class="progress-wrap" id="progressDrive"><div class="progress-bar" id="progressBarDrive"></div></div>
+          <div class="log-box" id="logDrive"></div>
+
+        </div>
+      </div>
+
       <!-- PAGE: Clientes / Config -->
       <div class="page" id="page-config">
         <div class="section-hdr">
@@ -651,6 +751,11 @@
       await sincronizarBoards();
       renderClienteCheckboxes();
       populateClienteSubir();
+
+      // volta do OAuth do Google
+      const params = new URLSearchParams(location.search);
+      if (params.get('drive') === 'connected') { showPage('drive'); history.replaceState({}, '', '/index.html'); }
+      if (params.get('drive_error')) { showPage('drive'); alert('Erro ao conectar Google: ' + params.get('drive_error')); history.replaceState({}, '', '/index.html'); }
     })();
 
     function logout() {
@@ -672,14 +777,16 @@
     const PAGE_META = {
       criar: { title: 'Criar Cards', sub: 'Crie cards no Trello por período' },
       subir: { title: 'Subir Conteúdo', sub: 'Envie descrições para cards existentes' },
+      drive: { title: 'Google Drive', sub: 'Crie pastas de datas nos drives dos clientes' },
       config: { title: 'Clientes', sub: 'Configure boards e listas por cliente' },
     };
 
     function showPage(name) {
-      ['criar','subir','config'].forEach(p => {
+      ['criar','subir','drive','config'].forEach(p => {
         document.getElementById(`page-${p}`).classList.toggle('active', p === name);
         document.getElementById(`nav-${p}`)?.classList.toggle('active', p === name);
       });
+      if (name === 'drive') checkDriveStatus();
       document.getElementById('topbarTitle').textContent = PAGE_META[name]?.title || '';
       document.getElementById('topbarSub').textContent = PAGE_META[name]?.sub || '';
       document.getElementById('configSaveBar').style.display = name === 'config' ? 'block' : 'none';
@@ -934,6 +1041,211 @@
         await new Promise(r => setTimeout(r, 200));
       }
       logMsg(logEl, '<br>Concluído!', 'log-ok');
+      btn.disabled = false;
+    }
+
+    // ── Google Drive ──────────────────────────────────────
+    let driveConnected = false;
+    let driveFolderStack = []; // [{id, name}]
+    let driveCurrentFolderId = null;
+
+    const DIAS_NOME_ABREV = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const MESES_NOME = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+    async function driveApi(path, opts = {}) {
+      const res = await fetch('/api/drive' + path, {
+        ...opts,
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...(opts.headers || {}) }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro Drive');
+      return data;
+    }
+
+    async function checkDriveStatus() {
+      try {
+        const { connected, email } = await driveApi('/status');
+        driveConnected = connected;
+        document.getElementById('driveStatusLabel').textContent = connected
+          ? `✓ Conectado como ${email}`
+          : 'Não conectado ao Google Drive';
+        document.getElementById('driveConnectBtns').innerHTML = connected
+          ? `<button class="btn btn-ghost btn-sm" onclick="disconnectDrive()">Desconectar</button>`
+          : `<a href="/api/drive/authorize" class="btn btn-primary btn-sm">
+               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+               Conectar Google Drive
+             </a>`;
+        document.getElementById('driveMain').style.display = connected ? 'block' : 'none';
+        if (connected) populateDriveClientes();
+      } catch (e) {
+        document.getElementById('driveStatusLabel').textContent = 'Erro ao verificar conexão';
+      }
+    }
+
+    async function disconnectDrive() {
+      if (!confirm('Desconectar o Google Drive?')) return;
+      await driveApi('/disconnect', { method: 'DELETE' });
+      checkDriveStatus();
+    }
+
+    function populateDriveClientes() {
+      const sel = document.getElementById('driveCliente');
+      sel.innerHTML = '<option value="">Selecione...</option>';
+      clientes.filter(c => c.ativo).forEach((c, i) => {
+        sel.innerHTML += `<option value="${clientes.indexOf(c)}">${c.nome}</option>`;
+      });
+    }
+
+    async function onDriveClienteChange() {
+      const gi = document.getElementById('driveCliente').value;
+      document.getElementById('drivePastaCard').style.display = 'none';
+      document.getElementById('driveCriarCard').style.display = 'none';
+      document.getElementById('driveCriarBtnWrap').style.display = 'none';
+      if (!gi) return;
+
+      const c = clientes[+gi];
+      document.getElementById('drivePastaInfo').textContent = 'Buscando link do Drive no Trello...';
+      document.getElementById('drivePastaCard').style.display = 'block';
+
+      try {
+        // Busca lista "drive" no board do cliente
+        const lists = await tFetch(`/boards/${c.boardId}/lists`);
+        const driveList = lists.find(l => l.name.toLowerCase().includes('drive'));
+        if (!driveList) { document.getElementById('drivePastaInfo').textContent = 'Lista "drive do cliente" não encontrada neste board.'; return; }
+
+        const cards = await tFetch(`/lists/${driveList.id}/cards`);
+        let folderId = null;
+        for (const card of cards) {
+          const text = (card.desc || '') + ' ' + (card.name || '');
+          const m = text.match(/drive\.google\.com[^\s"']*(?:folders\/|id=)([a-zA-Z0-9_-]{10,})/);
+          if (m) { folderId = m[1]; break; }
+        }
+        if (!folderId) { document.getElementById('drivePastaInfo').textContent = 'Nenhum link do Google Drive encontrado nos cards desta lista.'; return; }
+
+        // Busca nome da pasta
+        const info = await driveApi(`/folder-info?folderId=${folderId}`);
+        document.getElementById('drivePastaInfo').innerHTML = `📁 <strong>${info.name}</strong> &nbsp; <a href="https://drive.google.com/drive/folders/${folderId}" target="_blank" style="color:var(--accent);font-size:0.78rem">Abrir no Drive ↗</a>`;
+
+        driveFolderStack = [{ id: folderId, name: info.name }];
+        driveCurrentFolderId = folderId;
+        await loadDriveSubfolders(folderId);
+      } catch (err) {
+        document.getElementById('drivePastaInfo').textContent = 'Erro: ' + err.message;
+      }
+    }
+
+    async function loadDriveSubfolders(folderId) {
+      driveCurrentFolderId = folderId;
+      document.getElementById('driveSubfolders').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Carregando...</span>';
+      renderBreadcrumb();
+      document.getElementById('driveCriarCard').style.display = 'block';
+      document.getElementById('driveCriarBtnWrap').style.display = 'block';
+
+      try {
+        const folders = await driveApi(`/folders?folderId=${folderId}`);
+        if (!folders.length) {
+          document.getElementById('driveSubfolders').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Nenhuma subpasta encontrada</span>';
+          return;
+        }
+        document.getElementById('driveSubfolders').innerHTML = folders.map(f => `
+          <button onclick="enterFolder('${f.id}','${f.name.replace(/'/g,"\\'")}')"
+            style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:0.82rem;cursor:pointer;transition:all .15s"
+            onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'">
+            📁 ${f.name}
+          </button>`).join('');
+      } catch (err) {
+        document.getElementById('driveSubfolders').innerHTML = `<span style="color:var(--red);font-size:0.82rem">${err.message}</span>`;
+      }
+    }
+
+    function enterFolder(id, name) {
+      driveFolderStack.push({ id, name });
+      loadDriveSubfolders(id);
+    }
+
+    function renderBreadcrumb() {
+      document.getElementById('driveBreadcrumb').innerHTML = driveFolderStack.map((f, i) => `
+        <span>
+          ${i > 0 ? '<span style="color:var(--text3)">/</span> ' : ''}
+          <button onclick="goToBreadcrumb(${i})" style="background:none;border:none;color:${i===driveFolderStack.length-1?'var(--text)':'var(--accent)'};cursor:pointer;font-size:0.8rem;padding:0">${f.name}</button>
+        </span>`).join('');
+    }
+
+    function goToBreadcrumb(idx) {
+      driveFolderStack = driveFolderStack.slice(0, idx + 1);
+      loadDriveSubfolders(driveFolderStack[idx].id);
+    }
+
+    // Chips de dias no Drive
+    document.addEventListener('click', e => {
+      const chip = e.target.closest('#driveDias .day-chip');
+      if (chip) chip.classList.toggle('on');
+    });
+
+    function getDriveDias() {
+      return [...document.querySelectorAll('#driveDias .day-chip.on')].map(c => +c.dataset.d);
+    }
+
+    function formatarNomePasta(date, formato) {
+      const dd = String(date.getDate()).padStart(2,'0');
+      const mm = String(date.getMonth()+1).padStart(2,'0');
+      const nomeDia = DIAS_NOME_ABREV[date.getDay()];
+      if (formato === 'dd') return dd;
+      if (formato === 'dd/mm') return `${dd}/${mm}`;
+      if (formato === 'dd-mm') return `${dd}-${mm}`;
+      return `${nomeDia} ${dd}/${mm}`;
+    }
+
+    async function criarPastasDrive() {
+      const mes = +document.getElementById('driveMes').value;
+      const ano = +document.getElementById('driveAno').value;
+      const dias = getDriveDias();
+      const formato = document.getElementById('driveFormato').value;
+      const parentId = driveCurrentFolderId;
+
+      if (!parentId) return alert('Selecione a pasta de destino');
+      if (!dias.length) return alert('Selecione ao menos um dia da semana');
+
+      // Gera todos os dias do mês selecionado
+      const nomes = [];
+      const d = new Date(ano, mes - 1, 1);
+      while (d.getMonth() === mes - 1) {
+        if (dias.includes(d.getDay())) nomes.push(formatarNomePasta(new Date(d), formato));
+        d.setDate(d.getDate() + 1);
+      }
+      if (!nomes.length) return alert('Nenhum dia encontrado para o período selecionado');
+
+      const logEl = document.getElementById('logDrive');
+      logEl.innerHTML = ''; logEl.style.display = 'block';
+      const pw = document.getElementById('progressDrive');
+      const pb = document.getElementById('progressBarDrive');
+      pw.style.display = 'block'; pb.style.width = '0%';
+      const btn = document.getElementById('btnCriarPastas');
+      btn.disabled = true;
+
+      const pastaDestino = driveFolderStack[driveFolderStack.length - 1]?.name || '';
+      logMsg(logEl, `Criando ${nomes.length} pastas em "${pastaDestino}"...`, 'log-info');
+
+      try {
+        // Envia em lotes de 10
+        const lote = 10;
+        let feito = 0;
+        for (let i = 0; i < nomes.length; i += lote) {
+          const batch = nomes.slice(i, i + lote);
+          const results = await driveApi('/folders', { method: 'POST', body: JSON.stringify({ parentId, names: batch }) });
+          results.forEach(r => {
+            if (r.status === 'created') logMsg(logEl, `  ✓ ${r.name}`, 'log-ok');
+            else logMsg(logEl, `  ↷ ${r.name} — já existe`);
+          });
+          feito += batch.length;
+          pb.style.width = `${Math.round(feito/nomes.length*100)}%`;
+        }
+        logMsg(logEl, '<br>Concluído!', 'log-ok');
+        // Recarrega subpastas
+        await loadDriveSubfolders(parentId);
+      } catch (err) {
+        logMsg(logEl, `Erro: ${err.message}`, 'log-err');
+      }
       btn.disabled = false;
     }
 
