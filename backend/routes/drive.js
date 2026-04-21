@@ -14,14 +14,14 @@ function authMiddleware(req, res, next) {
 }
 
 function getRedirectUri(req) {
-  return process.env.GOOGLE_REDIRECT_URI ||
-    `${req.protocol}://${req.get('host')}/api/drive/callback`;
+  return (process.env.GOOGLE_REDIRECT_URI ||
+    `${req.protocol}://${req.get('host')}/api/drive/callback`).trim();
 }
 
 function makeOAuth2(refreshToken, redirectUri) {
   const client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_CLIENT_ID?.trim(),
+    process.env.GOOGLE_CLIENT_SECRET?.trim(),
     redirectUri
   );
   if (refreshToken) client.setCredentials({ refresh_token: refreshToken });
