@@ -215,6 +215,62 @@
     }
     .section-header h2 { font-size: 1.1rem; font-weight: 700; }
 
+    /* multi-select dropdown */
+    .ms-wrap { position: relative; min-width: 180px; }
+    .ms-trigger {
+      width: 100%;
+      padding: 7px 28px 7px 10px;
+      border: 1px solid #a1a1aa;
+      border-radius: 8px;
+      background: #f4f4f5;
+      color: #09090b;
+      font-size: 0.82rem;
+      cursor: pointer;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      position: relative;
+    }
+    .ms-trigger::after {
+      content: '▾';
+      position: absolute;
+      right: 9px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.7rem;
+      color: #71717a;
+    }
+    .ms-trigger.open { border-color: #09090b; }
+    .ms-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 3px);
+      left: 0;
+      min-width: 100%;
+      background: #f4f4f5;
+      border: 1px solid #a1a1aa;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      z-index: 50;
+      padding: 6px 0;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .ms-dropdown.open { display: block; }
+    .ms-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .ms-option:hover { background: #e4e4e7; }
+    .ms-option input { width: auto; margin: 0; padding: 0; cursor: pointer; }
+    .ms-empty { padding: 8px 12px; font-size: 0.8rem; color: #71717a; }
+
     /* progress bar */
     .progress-bar-wrap {
       background: #d4d4d8;
@@ -643,23 +699,35 @@
       const rows = lista.map(c => {
         const gi = clientes.indexOf(c);
         const ids = getListIds(c);
-        const optsListas = (c.listas || []).map(l =>
-          `<option value="${l.id}" ${ids.includes(l.id)?'selected':''}>${l.name}</option>`).join('');
+        const nListas = (c.listas||[]).length;
+        const labelListas = ids.length === 0
+          ? 'Selecione listas...'
+          : ids.length === 1
+            ? ((c.listas||[]).find(l => l.id === ids[0])?.name || '1 lista')
+            : `${ids.length} listas selecionadas`;
+        const msOpts = nListas
+          ? (c.listas).map(l => `
+              <label class="ms-option">
+                <input type="checkbox" ${ids.includes(l.id)?'checked':''}
+                  onchange="toggleLista(${gi},'${l.id}',this.checked,this.closest('.ms-wrap'))">
+                ${l.name}
+              </label>`).join('')
+          : `<div class="ms-empty">Clique em ↻ para carregar</div>`;
         const diasCheck = [1,2,3,4,5,6,0].map(d => `
           <label style="display:flex;align-items:center;gap:3px;font-size:0.78rem;cursor:pointer">
             <input type="checkbox" ${(c.diasSemana||[1,2,3,4,5]).includes(d)?'checked':''}
               onchange="toggleDia(${gi},${d},this.checked)" style="width:auto;margin:0;padding:0">
             ${DIAS_LABELS[d]}
           </label>`).join('');
-        const nListas = (c.listas||[]).length;
         return `
           <tr>
             <td style="font-weight:600">${c.nome}</td>
             <td>
-              <div style="display:flex;gap:6px;align-items:flex-start">
-                ${nListas
-                  ? `<select multiple onchange="setListIds(${gi},this)" style="min-width:160px;height:${Math.min(nListas,5)*28}px">${optsListas}</select>`
-                  : `<span style="color:#71717a;font-size:0.78rem">Clique em ↻</span>`}
+              <div style="display:flex;gap:6px;align-items:center">
+                <div class="ms-wrap">
+                  <button class="ms-trigger" onclick="toggleDropdown(this)">${labelListas}</button>
+                  <div class="ms-dropdown">${msOpts}</div>
+                </div>
                 <button class="btn btn-secondary btn-sm" onclick="fetchListasCliente(${gi})">↻</button>
               </div>
             </td>
@@ -682,8 +750,40 @@
         </table>`;
     }
 
-    function setListIds(gi, sel) {
-      clientes[gi].listIds = [...sel.selectedOptions].map(o => o.value);
+    function toggleDropdown(btn) {
+      const wrap = btn.closest('.ms-wrap');
+      const drop = wrap.querySelector('.ms-dropdown');
+      const isOpen = drop.classList.contains('open');
+      // fecha todos os outros abertos
+      document.querySelectorAll('.ms-dropdown.open').forEach(d => {
+        d.classList.remove('open');
+        d.previousElementSibling.classList.remove('open');
+      });
+      if (!isOpen) { drop.classList.add('open'); btn.classList.add('open'); }
+    }
+
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.ms-wrap')) {
+        document.querySelectorAll('.ms-dropdown.open').forEach(d => {
+          d.classList.remove('open');
+          d.previousElementSibling.classList.remove('open');
+        });
+      }
+    });
+
+    function toggleLista(gi, lid, checked, wrap) {
+      if (!clientes[gi].listIds) clientes[gi].listIds = [];
+      if (checked && !clientes[gi].listIds.includes(lid)) clientes[gi].listIds.push(lid);
+      if (!checked) clientes[gi].listIds = clientes[gi].listIds.filter(id => id !== lid);
+      // atualiza label do trigger sem re-render
+      const ids = clientes[gi].listIds;
+      const c = clientes[gi];
+      const label = ids.length === 0
+        ? 'Selecione listas...'
+        : ids.length === 1
+          ? ((c.listas||[]).find(l => l.id === ids[0])?.name || '1 lista')
+          : `${ids.length} listas selecionadas`;
+      wrap.querySelector('.ms-trigger').textContent = label;
     }
 
     function toggleDia(gi, dia, checked) {
