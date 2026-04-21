@@ -297,17 +297,16 @@
     <!-- TAB: Configurações -->
     <div class="panel" id="panel-config">
       <div class="section-header">
-        <h2>Clientes</h2>
-        <button class="btn btn-sm" onclick="addCliente()">+ Adicionar</button>
+        <h2>Clientes (Boards do Trello)</h2>
+        <button class="btn btn-secondary btn-sm" id="btnSyncBoards" onclick="sincronizarBoards()">↻ Sincronizar Boards</button>
       </div>
       <div class="filter-row">
         <button class="filter-btn active" id="filtroAtivos" onclick="setFiltro('ativos')">Ativos</button>
         <button class="filter-btn" id="filtroInativos" onclick="setFiltro('inativos')">Inativos</button>
       </div>
-      <div id="configTable"></div>
-      <div style="margin-top:16px;display:flex;gap:10px">
+      <div id="configTable"><p style="color:#71717a;font-size:0.85rem">Carregando boards...</p></div>
+      <div style="margin-top:16px">
         <button class="btn" onclick="salvarConfig()">Salvar Configurações</button>
-        <button class="btn btn-secondary btn-sm" onclick="fetchListasAll()">Atualizar listas do Trello</button>
       </div>
     </div>
   </div>
@@ -318,15 +317,17 @@
     const tmUser = JSON.parse(localStorage.getItem('tm_user') || '{}');
     let trelloKey = '', trelloToken = '';
 
-    (function init() {
+    (async function init() {
       if (!token) return (window.location.href = '/login.html');
-      // Decode JWT payload to get Trello creds
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
         trelloKey = payload.trello_api_key || '';
         trelloToken = payload.trello_token || '';
       } catch { logout(); }
       if (tmUser.role === 'admin') document.getElementById('adminLink').style.display = '';
+      await sincronizarBoards();
+      renderClienteCheckboxes();
+      populateClienteSubir();
     })();
 
     function logout() {
@@ -348,18 +349,11 @@
     }
 
     // ── Storage ───────────────────────────────────────────
-    const STORAGE_KEY = 'tm_clientes_v2';
-
-    const DEFAULT_CLIENTES = [
-      { nome: 'Therapiê', boardId: '', listId: '', diasSemana: [1,2,3,4,5], ativo: true, listas: [] },
-      { nome: 'Ciclos', boardId: '', listId: '', diasSemana: [1,3,5], ativo: true, listas: [] },
-      { nome: 'Amaris', boardId: '', listId: '', diasSemana: [1,3,5], ativo: true, listas: [] },
-      { nome: 'Graziella', boardId: '', listId: '', diasSemana: [1,3,5], ativo: true, listas: [] },
-    ];
+    const STORAGE_KEY = 'tm_clientes_v3';
 
     function loadClientes() {
-      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || DEFAULT_CLIENTES; }
-      catch { return DEFAULT_CLIENTES; }
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+      catch { return []; }
     }
     function saveClientes(cs) { localStorage.setItem(STORAGE_KEY, JSON.stringify(cs)); }
     let clientes = loadClientes();
@@ -379,14 +373,30 @@
       return tFetch(`/boards/${boardId}/lists?filter=open`);
     }
 
-    async function fetchListasAll() {
-      for (let i = 0; i < clientes.length; i++) {
-        if (clientes[i].boardId) {
-          try { clientes[i].listas = await fetchListas(clientes[i].boardId); }
-          catch { clientes[i].listas = []; }
+    async function sincronizarBoards() {
+      const btn = document.getElementById('btnSyncBoards');
+      btn.disabled = true;
+      btn.textContent = 'Sincronizando...';
+      document.getElementById('configTable').innerHTML = '<p style="color:#71717a;font-size:0.85rem">Buscando boards...</p>';
+      try {
+        const boards = await tFetch('/members/me/boards?filter=open&fields=id,name');
+        for (const b of boards) {
+          const existing = clientes.find(c => c.boardId === b.id);
+          if (!existing) {
+            const listas = await fetchListas(b.id);
+            clientes.push({ nome: b.name, boardId: b.id, listId: '', diasSemana: [1,2,3,4,5], ativo: true, listas });
+          } else if (!existing.listas || !existing.listas.length) {
+            existing.listas = await fetchListas(b.id);
+          }
         }
+        saveClientes(clientes);
+        renderClienteCheckboxes();
+        populateClienteSubir();
+      } catch (err) {
+        document.getElementById('configTable').innerHTML = `<p style="color:#b91c1c;font-size:0.85rem">Erro ao buscar boards: ${err.message}</p>`;
       }
-      saveClientes(clientes);
+      btn.disabled = false;
+      btn.textContent = '↻ Sincronizar Boards';
       renderConfig();
     }
 
@@ -445,8 +455,6 @@
           <input type="checkbox" checked data-idx="${clientes.indexOf(c)}" style="width:auto;margin:0;padding:0;"> ${c.nome}
         </label>`).join('');
     }
-    renderClienteCheckboxes();
-
     async function criarCards() {
       const inicio = document.getElementById('dataInicio').value;
       const fim = document.getElementById('dataFim').value;
@@ -504,8 +512,6 @@
         sel.innerHTML += `<option value="${clientes.indexOf(c)}">${c.nome}</option>`;
       });
     }
-    populateClienteSubir();
-
     const MESES_MAP = {
       janeiro:'01',fevereiro:'02','março':'03',marco:'03',abril:'04',
       maio:'05',junho:'06',julho:'07',agosto:'08',setembro:'09',
@@ -628,12 +634,11 @@
           </label>`).join('');
         return `
           <tr>
-            <td><input type="text" value="${c.nome}" onchange="clientes[${gi}].nome=this.value" style="min-width:120px"></td>
-            <td><input type="text" value="${c.boardId||''}" onchange="clientes[${gi}].boardId=this.value;clientes[${gi}].listas=[];clientes[${gi}].listId=''" style="min-width:160px" placeholder="ID do board"></td>
+            <td style="font-weight:600">${c.nome}</td>
             <td>
               <div style="display:flex;gap:6px;align-items:center">
-                <select onchange="clientes[${gi}].listId=this.value" style="min-width:130px">
-                  <option value="">Selecione...</option>${optsListas}
+                <select onchange="clientes[${gi}].listId=this.value" style="min-width:150px">
+                  <option value="">Selecione a lista...</option>${optsListas}
                 </select>
                 <button class="btn btn-secondary btn-sm" onclick="fetchListasCliente(${gi})">↻</button>
               </div>
@@ -643,7 +648,6 @@
               <div style="display:flex;gap:6px">
                 <span class="badge ${c.ativo?'badge-ativo':'badge-inativo'}">${c.ativo?'Ativo':'Inativo'}</span>
                 <button class="btn btn-sm ${c.ativo?'btn-secondary':'btn'}" onclick="toggleAtivo(${gi})">${c.ativo?'Desativar':'Ativar'}</button>
-                <button class="btn btn-danger btn-sm" onclick="removerCliente(${gi})">×</button>
               </div>
             </td>
           </tr>`;
@@ -652,7 +656,7 @@
       document.getElementById('configTable').innerHTML = `
         <table class="config-table">
           <thead><tr>
-            <th>Nome</th><th>Board ID</th><th>Lista</th><th>Dias da semana</th><th>Status</th>
+            <th>Board (Cliente)</th><th>Lista</th><th>Dias da semana</th><th>Status</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>`;
@@ -670,19 +674,6 @@
       renderConfig();
       renderClienteCheckboxes();
       populateClienteSubir();
-    }
-
-    function removerCliente(gi) {
-      if (!confirm(`Remover "${clientes[gi].nome}"?`)) return;
-      clientes.splice(gi, 1);
-      renderConfig();
-      renderClienteCheckboxes();
-      populateClienteSubir();
-    }
-
-    function addCliente() {
-      clientes.push({ nome: 'Novo Cliente', boardId: '', listId: '', diasSemana: [1,2,3,4,5], ativo: true, listas: [] });
-      setFiltro('ativos');
     }
 
     async function fetchListasCliente(gi) {
