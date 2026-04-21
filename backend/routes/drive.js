@@ -35,8 +35,7 @@ router.get('/authorize', authMiddleware, (req, res) => {
   const url = client.generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
-    scope: ['https://www.googleapis.com/auth/drive'],
-    // guarda userId e redirectUri no state para usar no callback
+    scope: ['https://www.googleapis.com/auth/drive', 'email', 'openid'],
     state: JSON.stringify({ userId: req.user.id, redirectUri })
   });
   res.redirect(url);
@@ -50,11 +49,18 @@ router.get('/callback', async (req, res) => {
     const { userId, redirectUri } = JSON.parse(stateRaw);
     const client = makeOAuth2(null, redirectUri);
     const { tokens } = await client.getToken(code);
-    client.setCredentials(tokens);
-    const { data: gUser } = await google.oauth2({ version: 'v2', auth: client }).userinfo.get();
+
+    let email = null;
+    if (tokens.id_token) {
+      try {
+        const payload = JSON.parse(Buffer.from(tokens.id_token.split('.')[1], 'base64url').toString());
+        email = payload.email || null;
+      } catch {}
+    }
+
     await supabase.from('users').update({
       google_refresh_token: tokens.refresh_token,
-      google_email: gUser.email
+      google_email: email
     }).eq('id', userId);
     res.redirect('/index.html?drive=connected');
   } catch (err) {
