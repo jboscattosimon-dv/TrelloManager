@@ -13,11 +13,16 @@ function authMiddleware(req, res, next) {
   catch { res.status(401).json({ error: 'Token inválido' }); }
 }
 
-function makeOAuth2(refreshToken) {
+function getRedirectUri(req) {
+  return process.env.GOOGLE_REDIRECT_URI ||
+    `${req.protocol}://${req.get('host')}/api/drive/callback`;
+}
+
+function makeOAuth2(refreshToken, redirectUri) {
   const client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI
+    redirectUri
   );
   if (refreshToken) client.setCredentials({ refresh_token: refreshToken });
   return client;
@@ -25,22 +30,25 @@ function makeOAuth2(refreshToken) {
 
 // Inicia fluxo OAuth — redireciona para o Google
 router.get('/authorize', authMiddleware, (req, res) => {
-  const client = makeOAuth2();
+  const redirectUri = getRedirectUri(req);
+  const client = makeOAuth2(null, redirectUri);
   const url = client.generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
     scope: ['https://www.googleapis.com/auth/drive'],
-    state: req.user.id
+    // guarda userId e redirectUri no state para usar no callback
+    state: JSON.stringify({ userId: req.user.id, redirectUri })
   });
   res.redirect(url);
 });
 
 // Callback do Google
 router.get('/callback', async (req, res) => {
-  const { code, state: userId, error } = req.query;
+  const { code, state: stateRaw, error } = req.query;
   if (error) return res.redirect('/index.html?drive_error=' + encodeURIComponent(error));
   try {
-    const client = makeOAuth2();
+    const { userId, redirectUri } = JSON.parse(stateRaw);
+    const client = makeOAuth2(null, redirectUri);
     const { tokens } = await client.getToken(code);
     client.setCredentials(tokens);
     const { data: gUser } = await google.oauth2({ version: 'v2', auth: client }).userinfo.get();
