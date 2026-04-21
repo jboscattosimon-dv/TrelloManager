@@ -643,27 +643,24 @@
       const rows = lista.map(c => {
         const gi = clientes.indexOf(c);
         const ids = getListIds(c);
-        const listasCheck = (c.listas || []).length
-          ? (c.listas).map(l => `
-              <label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer;white-space:nowrap">
-                <input type="checkbox" ${ids.includes(l.id)?'checked':''}
-                  onchange="toggleLista(${gi},'${l.id}',this.checked)" style="width:auto;margin:0;padding:0">
-                ${l.name}
-              </label>`).join('')
-          : `<span style="color:#71717a;font-size:0.78rem">Clique em ↻</span>`;
+        const optsListas = (c.listas || []).map(l =>
+          `<option value="${l.id}" ${ids.includes(l.id)?'selected':''}>${l.name}</option>`).join('');
         const diasCheck = [1,2,3,4,5,6,0].map(d => `
           <label style="display:flex;align-items:center;gap:3px;font-size:0.78rem;cursor:pointer">
             <input type="checkbox" ${(c.diasSemana||[1,2,3,4,5]).includes(d)?'checked':''}
               onchange="toggleDia(${gi},${d},this.checked)" style="width:auto;margin:0;padding:0">
             ${DIAS_LABELS[d]}
           </label>`).join('');
+        const nListas = (c.listas||[]).length;
         return `
           <tr>
             <td style="font-weight:600">${c.nome}</td>
             <td>
-              <div style="display:flex;flex-direction:column;gap:4px">
-                <div style="display:flex;flex-wrap:wrap;gap:8px">${listasCheck}</div>
-                <button class="btn btn-secondary btn-sm" style="align-self:flex-start;margin-top:2px" onclick="fetchListasCliente(${gi})">↻ atualizar listas</button>
+              <div style="display:flex;gap:6px;align-items:flex-start">
+                ${nListas
+                  ? `<select multiple onchange="setListIds(${gi},this)" style="min-width:160px;height:${Math.min(nListas,5)*28}px">${optsListas}</select>`
+                  : `<span style="color:#71717a;font-size:0.78rem">Clique em ↻</span>`}
+                <button class="btn btn-secondary btn-sm" onclick="fetchListasCliente(${gi})">↻</button>
               </div>
             </td>
             <td><div style="display:flex;gap:8px;flex-wrap:wrap">${diasCheck}</div></td>
@@ -685,10 +682,8 @@
         </table>`;
     }
 
-    function toggleLista(gi, lid, checked) {
-      if (!clientes[gi].listIds) clientes[gi].listIds = [];
-      if (checked && !clientes[gi].listIds.includes(lid)) clientes[gi].listIds.push(lid);
-      if (!checked) clientes[gi].listIds = clientes[gi].listIds.filter(id => id !== lid);
+    function setListIds(gi, sel) {
+      clientes[gi].listIds = [...sel.selectedOptions].map(o => o.value);
     }
 
     function toggleDia(gi, dia, checked) {
