@@ -1275,7 +1275,7 @@
           return;
         }
 
-        const html = cards.map(card => {
+        const html = cards.map((card, ci) => {
           const desc = (card.desc || '').trim();
           const descHtml = desc
             ? desc.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -1283,7 +1283,6 @@
                     const m = url.match(/drive\.google\.com[^\s"'<)]*(?:folders\/|id=)([a-zA-Z0-9_-]{10,})/);
                     if (m) {
                       const fid = m[1];
-                      const safeUrl = url.replace(/'/g,"\\'");
                       const safeName = card.name.replace(/'/g,"\\'");
                       return `<a href="#" onclick="selecionarDriveLink('${fid}','${safeName}',event)" style="color:var(--accent);word-break:break-all">📁 ${url}</a>`;
                     }
@@ -1292,9 +1291,16 @@
                   .replace(/\n/g,'<br>')
             : '<span style="color:var(--text3)">Sem descrição</span>';
 
-          return `<div style="border:1px solid var(--border2);border-radius:8px;padding:12px 14px;margin-bottom:10px;background:var(--surface2)">
-            <div style="font-weight:600;font-size:0.85rem;margin-bottom:6px">${card.name.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
-            <div style="font-size:0.8rem;color:var(--text2);line-height:1.6">${descHtml}</div>
+          const safeName = card.name.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+          const hasDesc = !!desc;
+          return `<div style="border:1px solid var(--border2);border-radius:8px;margin-bottom:8px;background:var(--surface2);overflow:hidden">
+            <button onclick="toggleCardDesc(${ci})" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:none;border:none;color:var(--text);font-family:inherit;font-size:0.85rem;font-weight:600;cursor:pointer;text-align:left">
+              <span>${safeName}</span>
+              <svg id="card-chevron-${ci}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;color:var(--text3);transition:transform .2s"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div id="card-desc-${ci}" style="display:none;padding:0 14px 12px;font-size:0.8rem;color:var(--text2);line-height:1.7;border-top:1px solid var(--border)">
+              ${hasDesc ? descHtml : '<span style="color:var(--text3)">Sem descrição</span>'}
+            </div>
           </div>`;
         }).join('');
 
@@ -1302,6 +1308,14 @@
       } catch (err) {
         document.getElementById('driveLinksWrap').innerHTML = `<span style="color:var(--red);font-size:0.82rem">Erro: ${err.message}</span>`;
       }
+    }
+
+    function toggleCardDesc(ci) {
+      const desc = document.getElementById(`card-desc-${ci}`);
+      const chev = document.getElementById(`card-chevron-${ci}`);
+      const open = desc.style.display === 'none';
+      desc.style.display = open ? 'block' : 'none';
+      chev.style.transform = open ? 'rotate(180deg)' : '';
     }
 
     async function selecionarDriveLink(folderId, cardName, e) {
