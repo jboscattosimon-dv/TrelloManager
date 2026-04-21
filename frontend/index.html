@@ -1250,7 +1250,6 @@
     }
 
     async function onDriveListaSelect(listId, btn) {
-      // highlight selecionado
       document.querySelectorAll('#driveListasWrap button').forEach(b => {
         b.classList.remove('sel');
         b.style.borderColor = 'var(--border2)';
@@ -1271,55 +1270,65 @@
 
       try {
         const cards = await tFetch(`/lists/${listId}/cards`);
-        const links = [];
-        for (const card of cards) {
-          const text = (card.name || '') + ' ' + (card.desc || '');
-          const matches = [...text.matchAll(/drive\.google\.com[^\s"'<)]*(?:folders\/|id=)([a-zA-Z0-9_-]{10,})/g)];
-          for (const m of matches) {
-            links.push({ cardName: card.name, folderId: m[1] });
-          }
-        }
-
-        if (!links.length) {
-          document.getElementById('driveLinksWrap').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Nenhum link do Google Drive encontrado nos cards desta lista.</span>';
+        if (!cards.length) {
+          document.getElementById('driveLinksWrap').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Nenhum card nesta lista.</span>';
           return;
         }
 
-        document.getElementById('driveLinksWrap').innerHTML = links.map((l, i) => `
-          <button onclick="selecionarDriveLink('${l.folderId}', '${l.cardName.replace(/'/g,"\\'")}', this)"
-            style="display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:0.82rem;cursor:pointer;transition:all .15s;font-family:inherit"
-            onmouseover="this.style.borderColor='var(--accent)'" onmouseout="if(!this.classList.contains('sel'))this.style.borderColor='var(--border2)'">
-            📁 ${l.cardName}
-          </button>`).join('');
+        const html = cards.map(card => {
+          const desc = (card.desc || '').trim();
+          const descHtml = desc
+            ? desc.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                  .replace(/(https?:\/\/[^\s]+)/g, url => {
+                    const m = url.match(/drive\.google\.com[^\s"'<)]*(?:folders\/|id=)([a-zA-Z0-9_-]{10,})/);
+                    if (m) {
+                      const fid = m[1];
+                      const safeUrl = url.replace(/'/g,"\\'");
+                      const safeName = card.name.replace(/'/g,"\\'");
+                      return `<a href="#" onclick="selecionarDriveLink('${fid}','${safeName}',event)" style="color:var(--accent);word-break:break-all">📁 ${url}</a>`;
+                    }
+                    return `<a href="${url}" target="_blank" style="color:var(--accent);word-break:break-all">${url}</a>`;
+                  })
+                  .replace(/\n/g,'<br>')
+            : '<span style="color:var(--text3)">Sem descrição</span>';
+
+          return `<div style="border:1px solid var(--border2);border-radius:8px;padding:12px 14px;margin-bottom:10px;background:var(--surface2)">
+            <div style="font-weight:600;font-size:0.85rem;margin-bottom:6px">${card.name.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
+            <div style="font-size:0.8rem;color:var(--text2);line-height:1.6">${descHtml}</div>
+          </div>`;
+        }).join('');
+
+        document.getElementById('driveLinksWrap').innerHTML = html;
       } catch (err) {
         document.getElementById('driveLinksWrap').innerHTML = `<span style="color:var(--red);font-size:0.82rem">Erro: ${err.message}</span>`;
       }
     }
 
-    async function selecionarDriveLink(folderId, cardName, btn) {
-      document.querySelectorAll('#driveLinksWrap button').forEach(b => {
-        b.classList.remove('sel');
-        b.style.borderColor = 'var(--border2)';
-        b.style.background = 'var(--surface2)';
-        b.style.color = 'var(--text)';
-      });
-      btn.classList.add('sel');
-      btn.style.borderColor = 'var(--accent)';
-      btn.style.background = 'var(--accent-dim)';
-      btn.style.color = 'var(--accent-hover)';
+    async function selecionarDriveLink(folderId, cardName, e) {
+      if (e && e.preventDefault) e.preventDefault();
 
       document.getElementById('driveNavWrap').style.display = 'none';
       document.getElementById('driveCriarCard').style.display = 'none';
       document.getElementById('driveCriarBtnWrap').style.display = 'none';
 
+      const feedback = document.getElementById('driveLinkFeedback');
+      if (feedback) feedback.remove();
+      const fbEl = document.createElement('div');
+      fbEl.id = 'driveLinkFeedback';
+      fbEl.style.cssText = 'font-size:0.8rem;color:var(--text3);margin-top:8px;padding:8px 12px;border-radius:8px;background:var(--surface);border:1px solid var(--border2)';
+      fbEl.textContent = 'Carregando pasta...';
+      document.getElementById('driveLinksWrap').after(fbEl);
+
       try {
         const info = await driveApi(`/folder-info?folderId=${folderId}`);
+        fbEl.innerHTML = `📁 <strong style="color:var(--text)">${info.name}</strong> selecionada como destino`;
         driveFolderStack = [{ id: folderId, name: info.name }];
         driveCurrentFolderId = folderId;
         document.getElementById('driveNavWrap').style.display = 'block';
         await loadDriveSubfolders(folderId);
       } catch (err) {
-        document.getElementById('driveLinksWrap').innerHTML += `<div style="color:var(--red);font-size:0.82rem;margin-top:8px">Erro ao acessar pasta: ${err.message}</div>`;
+        fbEl.style.color = 'var(--red)';
+        fbEl.textContent = 'Erro ao acessar pasta: ' + err.message;
       }
     }
 
