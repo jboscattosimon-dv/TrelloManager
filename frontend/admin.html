@@ -248,11 +248,13 @@
       return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
     }
 
+    let usersCache = [];
+
     async function loadUsers() {
       const res = await fetch('/api/auth/users', { headers: authHeaders() });
       if (res.status === 401) return logout();
-      const users = await res.json();
-      renderTable(users);
+      usersCache = await res.json();
+      renderTable(usersCache);
     }
 
     function renderTable(users) {
@@ -260,7 +262,7 @@
         document.getElementById('tableWrapper').innerHTML = '<p class="loading">Nenhum usuário cadastrado.</p>';
         return;
       }
-      const rows = users.map(u => `
+      const rows = users.map((u, i) => `
         <tr>
           <td>${u.name}</td>
           <td>${u.email}</td>
@@ -268,7 +270,7 @@
           <td>${new Date(u.created_at).toLocaleDateString('pt-BR')}</td>
           <td>
             <div class="actions">
-              <button class="btn btn-secondary btn-sm" onclick="openModal('${u.id}','${esc(u.name)}','${esc(u.email)}','${u.role}')">Editar</button>
+              <button class="btn btn-secondary btn-sm" onclick="openModal(${i})">Editar</button>
               <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}','${esc(u.name)}')">Excluir</button>
             </div>
           </td>
@@ -282,16 +284,17 @@
 
     function esc(s) { return s.replace(/'/g, "\\'"); }
 
-    function openModal(id, name, email, role) {
-      editingId = id || null;
-      document.getElementById('modalTitle').textContent = id ? 'Editar Usuário' : 'Novo Usuário';
-      document.getElementById('fName').value = name || '';
-      document.getElementById('fEmail').value = email || '';
-      document.getElementById('fRole').value = role || 'user';
+    function openModal(idx) {
+      const u = idx !== undefined ? usersCache[idx] : null;
+      editingId = u ? u.id : null;
+      document.getElementById('modalTitle').textContent = u ? 'Editar Usuário' : 'Novo Usuário';
+      document.getElementById('fName').value = u ? u.name : '';
+      document.getElementById('fEmail').value = u ? u.email : '';
+      document.getElementById('fRole').value = u ? u.role : 'user';
       document.getElementById('fPassword').value = '';
-      document.getElementById('fApiKey').value = '';
-      document.getElementById('fToken').value = '';
-      document.getElementById('passwordHint').style.display = id ? 'block' : 'none';
+      document.getElementById('fApiKey').value = u ? (u.trello_api_key || '') : '';
+      document.getElementById('fToken').value = u ? (u.trello_token || '') : '';
+      document.getElementById('passwordHint').style.display = u ? 'block' : 'none';
       document.getElementById('modalError').style.display = 'none';
       document.getElementById('modalOverlay').classList.add('open');
     }
@@ -307,13 +310,15 @@
       errEl.style.display = 'none';
       saveBtn.disabled = true;
 
+      const apiKey = document.getElementById('fApiKey').value.trim();
+      const trelloToken = document.getElementById('fToken').value.trim();
       const body = {
         name: document.getElementById('fName').value.trim(),
         email: document.getElementById('fEmail').value.trim(),
         role: document.getElementById('fRole').value,
-        trello_api_key: document.getElementById('fApiKey').value.trim(),
-        trello_token: document.getElementById('fToken').value.trim()
       };
+      if (apiKey) body.trello_api_key = apiKey;
+      if (trelloToken) body.trello_token = trelloToken;
       const pass = document.getElementById('fPassword').value;
       if (pass) body.password = pass;
       if (!editingId && !pass) {

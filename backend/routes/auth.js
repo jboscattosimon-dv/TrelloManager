@@ -88,7 +88,12 @@ router.delete('/users/:id', authMiddleware, adminMiddleware, async (req, res) =>
 // Atualizar usuário (admin)
 router.put('/users/:id', authMiddleware, adminMiddleware, async (req, res) => {
   const { name, email, password, role, trello_api_key, trello_token } = req.body;
-  const updates = { name, email: email?.toLowerCase(), role, trello_api_key, trello_token };
+  const updates = {};
+  if (name !== undefined) updates.name = name;
+  if (email !== undefined) updates.email = email.toLowerCase();
+  if (role !== undefined) updates.role = role;
+  if (trello_api_key !== undefined) updates.trello_api_key = trello_api_key;
+  if (trello_token !== undefined) updates.trello_token = trello_token;
   if (password) updates.password_hash = await bcrypt.hash(password, 10);
 
   const { data, error } = await supabase.from('users')
