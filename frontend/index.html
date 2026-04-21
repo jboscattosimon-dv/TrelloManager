@@ -667,21 +667,27 @@
             </div>
           </div>
 
-          <!-- Passo 2: Pasta raiz detectada via Trello -->
+          <!-- Passo 2: Selecionar lista -->
+          <div class="card" id="driveListaCard" style="display:none">
+            <div class="card-title">2 · Selecione a lista</div>
+            <div id="driveListasWrap" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+          </div>
+
+          <!-- Passo 3: Links do Drive encontrados na lista -->
           <div class="card" id="drivePastaCard" style="display:none">
-            <div class="card-title">2 · Pasta do Drive (detectada via Trello)</div>
-            <div id="drivePastaInfo" style="font-size:0.85rem;color:var(--text2);margin-bottom:12px"></div>
+            <div class="card-title">3 · Pasta do Drive</div>
+            <div id="driveLinksWrap" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px"></div>
             <!-- Navegação de subpastas -->
-            <div style="margin-bottom:10px">
-              <div class="form-label">Subpastas</div>
+            <div id="driveNavWrap" style="display:none">
+              <div class="form-label" style="margin-bottom:8px">Navegar pastas</div>
               <div id="driveBreadcrumb" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;font-size:0.8rem;color:var(--text3)"></div>
               <div id="driveSubfolders" style="display:flex;flex-wrap:wrap;gap:8px"></div>
             </div>
           </div>
 
-          <!-- Passo 3: Criar pastas -->
+          <!-- Passo 4: Criar pastas -->
           <div class="card" id="driveCriarCard" style="display:none">
-            <div class="card-title">3 · Criar pastas de datas</div>
+            <div class="card-title">4 · Criar pastas de datas</div>
             <div class="row-2" style="margin-bottom:16px">
               <div class="form-group" style="margin:0">
                 <label class="form-label">Mês</label>
@@ -1218,39 +1224,102 @@
 
     async function onDriveClienteChange() {
       const gi = document.getElementById('driveCliente').value;
+      document.getElementById('driveListaCard').style.display = 'none';
       document.getElementById('drivePastaCard').style.display = 'none';
       document.getElementById('driveCriarCard').style.display = 'none';
       document.getElementById('driveCriarBtnWrap').style.display = 'none';
+      document.getElementById('driveNavWrap').style.display = 'none';
       if (!gi) return;
 
       const c = clientes[+gi];
-      document.getElementById('drivePastaInfo').textContent = 'Buscando link do Drive no Trello...';
+      document.getElementById('driveListasWrap').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Buscando listas...</span>';
+      document.getElementById('driveListaCard').style.display = 'block';
+
+      try {
+        const lists = await tFetch(`/boards/${c.boardId}/lists?filter=open`);
+        if (!lists.length) { document.getElementById('driveListasWrap').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Nenhuma lista encontrada.</span>'; return; }
+        document.getElementById('driveListasWrap').innerHTML = lists.map(l => `
+          <button onclick="onDriveListaSelect('${l.id}', this)"
+            style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:0.82rem;cursor:pointer;transition:all .15s;font-family:inherit"
+            onmouseover="this.style.borderColor='var(--accent)'" onmouseout="if(!this.classList.contains('sel'))this.style.borderColor='var(--border2)'">
+            ${l.name}
+          </button>`).join('');
+      } catch (err) {
+        document.getElementById('driveListasWrap').innerHTML = `<span style="color:var(--red);font-size:0.82rem">Erro: ${err.message}</span>`;
+      }
+    }
+
+    async function onDriveListaSelect(listId, btn) {
+      // highlight selecionado
+      document.querySelectorAll('#driveListasWrap button').forEach(b => {
+        b.classList.remove('sel');
+        b.style.borderColor = 'var(--border2)';
+        b.style.background = 'var(--surface2)';
+        b.style.color = 'var(--text)';
+      });
+      btn.classList.add('sel');
+      btn.style.borderColor = 'var(--accent)';
+      btn.style.background = 'var(--accent-dim)';
+      btn.style.color = 'var(--accent-hover)';
+
+      document.getElementById('drivePastaCard').style.display = 'none';
+      document.getElementById('driveCriarCard').style.display = 'none';
+      document.getElementById('driveCriarBtnWrap').style.display = 'none';
+      document.getElementById('driveNavWrap').style.display = 'none';
+      document.getElementById('driveLinksWrap').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Buscando cards...</span>';
       document.getElementById('drivePastaCard').style.display = 'block';
 
       try {
-        // Busca lista "drive" no board do cliente
-        const lists = await tFetch(`/boards/${c.boardId}/lists`);
-        const driveList = lists.find(l => l.name.toLowerCase().includes('drive'));
-        if (!driveList) { document.getElementById('drivePastaInfo').textContent = 'Lista "drive do cliente" não encontrada neste board.'; return; }
-
-        const cards = await tFetch(`/lists/${driveList.id}/cards`);
-        let folderId = null;
+        const cards = await tFetch(`/lists/${listId}/cards`);
+        const links = [];
         for (const card of cards) {
-          const text = (card.desc || '') + ' ' + (card.name || '');
-          const m = text.match(/drive\.google\.com[^\s"']*(?:folders\/|id=)([a-zA-Z0-9_-]{10,})/);
-          if (m) { folderId = m[1]; break; }
+          const text = (card.name || '') + ' ' + (card.desc || '');
+          const matches = [...text.matchAll(/drive\.google\.com[^\s"'<)]*(?:folders\/|id=)([a-zA-Z0-9_-]{10,})/g)];
+          for (const m of matches) {
+            links.push({ cardName: card.name, folderId: m[1] });
+          }
         }
-        if (!folderId) { document.getElementById('drivePastaInfo').textContent = 'Nenhum link do Google Drive encontrado nos cards desta lista.'; return; }
 
-        // Busca nome da pasta
+        if (!links.length) {
+          document.getElementById('driveLinksWrap').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Nenhum link do Google Drive encontrado nos cards desta lista.</span>';
+          return;
+        }
+
+        document.getElementById('driveLinksWrap').innerHTML = links.map((l, i) => `
+          <button onclick="selecionarDriveLink('${l.folderId}', '${l.cardName.replace(/'/g,"\\'")}', this)"
+            style="display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:0.82rem;cursor:pointer;transition:all .15s;font-family:inherit"
+            onmouseover="this.style.borderColor='var(--accent)'" onmouseout="if(!this.classList.contains('sel'))this.style.borderColor='var(--border2)'">
+            📁 ${l.cardName}
+          </button>`).join('');
+      } catch (err) {
+        document.getElementById('driveLinksWrap').innerHTML = `<span style="color:var(--red);font-size:0.82rem">Erro: ${err.message}</span>`;
+      }
+    }
+
+    async function selecionarDriveLink(folderId, cardName, btn) {
+      document.querySelectorAll('#driveLinksWrap button').forEach(b => {
+        b.classList.remove('sel');
+        b.style.borderColor = 'var(--border2)';
+        b.style.background = 'var(--surface2)';
+        b.style.color = 'var(--text)';
+      });
+      btn.classList.add('sel');
+      btn.style.borderColor = 'var(--accent)';
+      btn.style.background = 'var(--accent-dim)';
+      btn.style.color = 'var(--accent-hover)';
+
+      document.getElementById('driveNavWrap').style.display = 'none';
+      document.getElementById('driveCriarCard').style.display = 'none';
+      document.getElementById('driveCriarBtnWrap').style.display = 'none';
+
+      try {
         const info = await driveApi(`/folder-info?folderId=${folderId}`);
-        document.getElementById('drivePastaInfo').innerHTML = `📁 <strong>${info.name}</strong> &nbsp; <a href="https://drive.google.com/drive/folders/${folderId}" target="_blank" style="color:var(--accent);font-size:0.78rem">Abrir no Drive ↗</a>`;
-
         driveFolderStack = [{ id: folderId, name: info.name }];
         driveCurrentFolderId = folderId;
+        document.getElementById('driveNavWrap').style.display = 'block';
         await loadDriveSubfolders(folderId);
       } catch (err) {
-        document.getElementById('drivePastaInfo').textContent = 'Erro: ' + err.message;
+        document.getElementById('driveLinksWrap').innerHTML += `<div style="color:var(--red);font-size:0.82rem;margin-top:8px">Erro ao acessar pasta: ${err.message}</div>`;
       }
     }
 
