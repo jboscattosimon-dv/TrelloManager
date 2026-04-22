@@ -1288,7 +1288,7 @@
                Conectar Google Drive
              </button>`;
         document.getElementById('driveMain').style.display = connected ? 'block' : 'none';
-        if (connected) populateDriveClientes();
+        if (connected) { driveShowAll.cliente = false; driveShowAll.lista = false; driveShowAll.card = false; populateDriveClientes(); }
       } catch (e) {
         document.getElementById('driveStatusLabel').textContent = 'Erro ao verificar conexão';
       }
@@ -1305,7 +1305,10 @@
     function loadDriveFav() { try { return JSON.parse(localStorage.getItem(DRIVE_FAV_KEY)) || {}; } catch { return {}; } }
     function saveDriveFav(fav) { localStorage.setItem(DRIVE_FAV_KEY, JSON.stringify(fav)); }
 
-    function favBtn(type, id, title='') {
+    // Tracks which fav filters the user has manually expanded to "ver todos"
+    const driveShowAll = { cliente: false, lista: false, card: false };
+
+    function favBtn(type, id) {
       const fav = loadDriveFav();
       const isFav = fav[type] === id;
       return `<button onclick="toggleDriveFav('${type}','${id}',this)" title="${isFav?'Remover favorito':'Salvar como favorito'}"
@@ -1322,18 +1325,33 @@
     function populateDriveClientes() {
       const sel = document.getElementById('driveCliente');
       const fav = loadDriveFav();
-      sel.innerHTML = '<option value="">Selecione...</option>';
-      clientes.filter(c => c.ativo).forEach(c => {
-        const gi = clientes.indexOf(c);
-        const star = fav.cliente === String(gi) ? '⭐ ' : '';
-        sel.innerHTML += `<option value="${gi}">${star}${c.nome}</option>`;
-      });
-      if (fav.cliente) sel.value = fav.cliente;
-      if (sel.value) onDriveClienteChange();
+      const activeClientes = clientes.filter(c => c.ativo);
+
+      if (fav.cliente && !driveShowAll.cliente) {
+        const favIdx = String(fav.cliente);
+        const favC = clientes[+favIdx];
+        sel.innerHTML = `<option value="">—</option>` +
+          (favC ? `<option value="${favIdx}">⭐ ${favC.nome}</option>` : '') +
+          `<option value="__all__">Ver todos os clientes ▸</option>`;
+        sel.value = favIdx;
+        if (sel.value === favIdx) onDriveClienteChange();
+      } else {
+        sel.innerHTML = '<option value="">Selecione...</option>';
+        activeClientes.forEach(c => {
+          const gi = clientes.indexOf(c);
+          const star = fav.cliente === String(gi) ? '⭐ ' : '';
+          sel.innerHTML += `<option value="${gi}">${star}${c.nome}</option>`;
+        });
+        if (fav.cliente) { sel.value = fav.cliente; if (sel.value) onDriveClienteChange(); }
+      }
     }
 
     async function onDriveClienteChange() {
       const gi = document.getElementById('driveCliente').value;
+      if (gi === '__all__') {
+        driveShowAll.cliente = true; driveShowAll.lista = true; driveShowAll.card = true;
+        populateDriveClientes(); return;
+      }
       const listSel = document.getElementById('driveListaSelect');
       document.getElementById('driveCardsCard').style.display = 'none';
       document.getElementById('driveBrowserPanel').style.display = 'none';
@@ -1350,21 +1368,79 @@
         const c = clientes[+gi];
         const lists = await tFetch(`/boards/${c.boardId}/lists?filter=open`);
         const fav = loadDriveFav();
-        listSel.innerHTML = '<option value="">Selecione uma lista...</option>' +
-          lists.map(l => `<option value="${l.id}">${fav.lista===l.id?'⭐ ':''}${l.name}</option>`).join('');
-        listSel.disabled = false;
-        if (fav.lista && lists.find(l => l.id === fav.lista)) {
-          listSel.value = fav.lista;
-          document.getElementById('driveListaFavBtn').innerHTML = favBtn('lista', fav.lista);
-          onDriveListaSelectChange();
+
+        if (fav.lista && !driveShowAll.lista) {
+          const favList = lists.find(l => l.id === fav.lista);
+          listSel.innerHTML = `<option value="">—</option>` +
+            (favList ? `<option value="${favList.id}">⭐ ${favList.name}</option>` : '') +
+            `<option value="__all_lists__">Ver todas as listas ▸</option>`;
+          listSel.disabled = false;
+          if (favList) {
+            listSel.value = favList.id;
+            document.getElementById('driveListaFavBtn').innerHTML = favBtn('lista', favList.id);
+            onDriveListaSelectChange();
+          }
+        } else {
+          listSel.innerHTML = '<option value="">Selecione uma lista...</option>' +
+            lists.map(l => `<option value="${l.id}">${fav.lista===l.id?'⭐ ':''}${l.name}</option>`).join('');
+          listSel.disabled = false;
+          if (fav.lista && lists.find(l => l.id === fav.lista)) {
+            listSel.value = fav.lista;
+            document.getElementById('driveListaFavBtn').innerHTML = favBtn('lista', fav.lista);
+            onDriveListaSelectChange();
+          }
         }
       } catch (err) {
         listSel.innerHTML = `<option value="">Erro ao carregar listas</option>`;
       }
     }
 
+    function buildCardHtml(card, ci, autoOpen) {
+      const desc = (card.desc || '').trim();
+      const descHtml = desc
+        ? desc.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+              .replace(/(https?:\/\/[^\s]+)/g, url => {
+                const m = url.match(/drive\.google\.com[^\s"'<)]*(?:folders\/|id=)([a-zA-Z0-9_-]{10,})/);
+                if (m) {
+                  const fid = m[1];
+                  const safeName = card.name.replace(/'/g,"\\'");
+                  return `<a href="#" onclick="selecionarDriveLink('${fid}','${safeName}',event)" style="color:var(--accent);font-weight:500;word-break:break-all;text-decoration:none">
+                    <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:6px;background:var(--accent-dim);border:1px solid rgba(99,102,241,0.2);font-size:0.78rem">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                      Selecionar esta pasta
+                    </span>
+                  </a><br><span style="font-size:0.72rem;color:var(--text3);word-break:break-all">${url}</span>`;
+                }
+                return `<a href="${url}" target="_blank" style="color:var(--accent);word-break:break-all;font-size:0.78rem">${url}</a>`;
+              })
+              .replace(/\n/g,'<br>')
+        : '<span style="color:var(--text3);font-size:0.78rem">Sem descrição</span>';
+
+      const safeName = card.name.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      const fav = loadDriveFav();
+      const isCardFav = fav.card === card.id;
+      const open = autoOpen ? 'block' : 'none';
+      const rot  = autoOpen ? 'rotate(180deg)' : '';
+      return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface);overflow:hidden">
+        <div style="display:flex;align-items:center">
+          <button onclick="toggleCardDesc(${ci})" style="flex:1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px;background:none;border:none;color:var(--text);font-family:inherit;font-size:0.84rem;font-weight:600;cursor:pointer;text-align:left">
+            <span>${safeName}</span>
+            <svg id="card-chevron-${ci}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;color:var(--text3);transition:transform .2s;transform:${rot}"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <button onclick="toggleDriveFav('card','${card.id}',this)" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:8px 12px 8px 4px;opacity:${isCardFav?1:0.3};transition:opacity .15s" title="${isCardFav?'Remover favorito':'Salvar card como favorito'}">${isCardFav?'⭐':'☆'}</button>
+        </div>
+        <div id="card-desc-${ci}" style="display:${open};padding:10px 14px 12px;font-size:0.8rem;color:var(--text2);line-height:1.8;border-top:1px solid var(--border)">
+          ${descHtml}
+        </div>
+      </div>`;
+    }
+
     async function onDriveListaSelectChange() {
       const listId = document.getElementById('driveListaSelect').value;
+      if (listId === '__all_lists__') {
+        driveShowAll.lista = true; driveShowAll.card = true;
+        onDriveClienteChange(); return;
+      }
       document.getElementById('driveBrowserPanel').style.display = 'none';
       document.getElementById('driveCardsCard').style.display = 'none';
       if (!listId) { document.getElementById('driveListaFavBtn').innerHTML = ''; return; }
@@ -1380,45 +1456,21 @@
           return;
         }
 
-        const html = cards.map((card, ci) => {
-          const desc = (card.desc || '').trim();
-          const descHtml = desc
-            ? desc.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-                  .replace(/(https?:\/\/[^\s]+)/g, url => {
-                    const m = url.match(/drive\.google\.com[^\s"'<)]*(?:folders\/|id=)([a-zA-Z0-9_-]{10,})/);
-                    if (m) {
-                      const fid = m[1];
-                      const safeName = card.name.replace(/'/g,"\\'");
-                      return `<a href="#" onclick="selecionarDriveLink('${fid}','${safeName}',event)" style="color:var(--accent);font-weight:500;word-break:break-all;text-decoration:none">
-                        <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:6px;background:var(--accent-dim);border:1px solid rgba(99,102,241,0.2);font-size:0.78rem">
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                          Selecionar esta pasta
-                        </span>
-                      </a><br><span style="font-size:0.72rem;color:var(--text3);word-break:break-all">${url}</span>`;
-                    }
-                    return `<a href="${url}" target="_blank" style="color:var(--accent);word-break:break-all;font-size:0.78rem">${url}</a>`;
-                  })
-                  .replace(/\n/g,'<br>')
-            : '<span style="color:var(--text3);font-size:0.78rem">Sem descrição</span>';
-
-          const safeName = card.name.replace(/&/g,'&amp;').replace(/</g,'&lt;');
-          const fav = loadDriveFav();
-          const isCardFav = fav.card === card.id;
-          return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface);overflow:hidden">
-            <div style="display:flex;align-items:center">
-              <button onclick="toggleCardDesc(${ci})" style="flex:1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px;background:none;border:none;color:var(--text);font-family:inherit;font-size:0.84rem;font-weight:600;cursor:pointer;text-align:left">
-                <span>${safeName}</span>
-                <svg id="card-chevron-${ci}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;color:var(--text3);transition:transform .2s"><path d="m6 9 6 6 6-6"/></svg>
-              </button>
-              <button onclick="toggleDriveFav('card','${card.id}',this)" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:8px 12px 8px 4px;opacity:${isCardFav?1:0.3};transition:opacity .15s" title="${isCardFav?'Remover favorito':'Salvar card como favorito'}">${isCardFav?'⭐':'☆'}</button>
-            </div>
-            <div id="card-desc-${ci}" style="display:none;padding:10px 14px 12px;font-size:0.8rem;color:var(--text2);line-height:1.8;border-top:1px solid var(--border)">
-              ${descHtml}
-            </div>
-          </div>`; // outer div
-        }).join('');
-
-        document.getElementById('driveLinksWrap').innerHTML = html;
+        const fav = loadDriveFav();
+        if (fav.card && !driveShowAll.card) {
+          const favCard = cards.find(c => c.id === fav.card);
+          const showAllBtn = `<div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+            <button onclick="driveShowAll.card=true;onDriveListaSelectChange()" style="background:none;border:1px solid var(--border2);color:var(--text2);font-size:0.75rem;padding:4px 10px;border-radius:6px;cursor:pointer">Ver todos os cards ▸</button>
+          </div>`;
+          if (favCard) {
+            document.getElementById('driveLinksWrap').innerHTML = showAllBtn + buildCardHtml(favCard, 0, true);
+          } else {
+            document.getElementById('driveLinksWrap').innerHTML = showAllBtn + '<span style="color:var(--text3);font-size:0.82rem">Card favorito não encontrado nesta lista.</span>';
+          }
+        } else {
+          const html = cards.map((card, ci) => buildCardHtml(card, ci, false)).join('');
+          document.getElementById('driveLinksWrap').innerHTML = html;
+        }
       } catch (err) {
         document.getElementById('driveLinksWrap').innerHTML = `<span style="color:var(--red);font-size:0.82rem">Erro: ${err.message}</span>`;
       }
