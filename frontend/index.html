@@ -1521,11 +1521,31 @@
           return;
         }
         const favCards = getFavCards();
-        allCards.sort((a, b) => (favCards.includes(a.id)?0:1) - (favCards.includes(b.id)?0:1));
-        document.getElementById('driveLinksWrap').innerHTML = allCards.map((card, ci) => buildCardHtml(card, ci)).join('');
+        const faved = allCards.filter(c => favCards.includes(c.id));
+        const rest  = allCards.filter(c => !favCards.includes(c.id));
+
+        if (faved.length > 0) {
+          const favHtml = faved.map((card, ci) => buildCardHtml(card, ci)).join('');
+          const restBtn = rest.length
+            ? `<div id="driveRestWrap" style="display:none">${rest.map((card, ci) => buildCardHtml(card, faved.length + ci)).join('')}</div>
+               <div style="display:flex;justify-content:center;margin-top:8px">
+                 <button id="driveShowRestBtn" onclick="driveShowRestCards()" style="background:none;border:1px solid var(--border2);color:var(--text2);font-size:0.78rem;padding:5px 14px;border-radius:7px;cursor:pointer">
+                   Ver demais cards (${rest.length}) ▸
+                 </button>
+               </div>`
+            : '';
+          document.getElementById('driveLinksWrap').innerHTML = favHtml + restBtn;
+        } else {
+          document.getElementById('driveLinksWrap').innerHTML = allCards.map((card, ci) => buildCardHtml(card, ci)).join('');
+        }
       } catch (err) {
         document.getElementById('driveLinksWrap').innerHTML = `<span style="color:var(--red);font-size:0.82rem">Erro: ${err.message}</span>`;
       }
+    }
+
+    function driveShowRestCards() {
+      document.getElementById('driveRestWrap').style.display = 'block';
+      document.getElementById('driveShowRestBtn').style.display = 'none';
     }
 
     function buildCardHtml(card, ci) {
