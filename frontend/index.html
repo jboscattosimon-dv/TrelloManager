@@ -687,35 +687,36 @@
         <!-- Conteúdo principal -->
         <div id="driveMain" style="display:none">
 
-          <!-- Cliente + Lista compacto -->
-          <div class="card" style="margin-bottom:16px;padding:14px 18px">
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              <div id="driveFavChips" style="display:contents"></div>
-              <div style="display:flex;align-items:center;gap:5px">
-                <select id="driveAddClienteSelect" onchange="onDriveAddCliente(this)"
-                  style="font-size:0.82rem;padding:5px 28px 5px 10px;border-radius:8px;border:1px dashed var(--border2);background:var(--surface2);color:var(--text2);min-width:150px">
-                  <option value="">+ Outro cliente...</option>
+          <!-- Slots: Board › Lista › Card -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <span style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3)">Clientes</span>
+            <button class="btn btn-ghost btn-sm" onclick="showAddSlot()" id="driveAddSlotBtn">+ Adicionar</button>
+          </div>
+
+          <!-- Painel de adição de slot -->
+          <div id="driveAddSlotPanel" style="display:none;margin-bottom:16px">
+            <div class="card" style="padding:16px">
+              <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:12px">Novo cliente</div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <select id="driveSlotBoard" onchange="onSlotBoardChange()">
+                  <option value="">Board / cliente...</option>
                 </select>
-                <span id="driveAddClienteFavBtn"></span>
+                <select id="driveSlotLista" disabled onchange="onSlotListaChange()">
+                  <option value="">Lista...</option>
+                </select>
+                <select id="driveSlotCard" disabled>
+                  <option value="">Card...</option>
+                </select>
               </div>
-            </div>
-            <div id="driveListaSelectWrap" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-              <div style="display:flex;align-items:center;gap:8px">
-                <span style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);white-space:nowrap;flex-shrink:0">Listas</span>
-                <div class="ms-wrap" style="flex:1">
-                  <button class="ms-trigger" id="driveListaMsTrigger" onclick="toggleDropdown(this)">Selecione listas...</button>
-                  <div class="ms-dropdown" id="driveListaMsDropdown"></div>
-                </div>
-                <button class="btn btn-ghost btn-sm" onclick="loadSelectedListsCards()" style="flex-shrink:0">Ver cards</button>
+              <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+                <button class="btn btn-ghost btn-sm" onclick="cancelAddSlot()">Cancelar</button>
+                <button class="btn btn-primary btn-sm" onclick="saveSlot()">Salvar</button>
               </div>
             </div>
           </div>
 
-          <!-- Cards da lista selecionada -->
-          <div id="driveCardsCard" style="display:none;margin-bottom:16px">
-            <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:10px">Cards da lista</div>
-            <div id="driveLinksWrap"></div>
-          </div>
+          <!-- Lista de slots salvos -->
+          <div id="driveSlotsWrap" style="margin-bottom:16px"></div>
 
           <!-- Navegador de pasta + Criar pastas (aparece após selecionar link) -->
           <div id="driveBrowserPanel" style="display:none">
@@ -1311,7 +1312,7 @@
                Conectar Google Drive
              </button>`;
         document.getElementById('driveMain').style.display = connected ? 'block' : 'none';
-        if (connected) { driveActiveCliente = null; populateDriveClientes(); }
+        if (connected) renderDriveSlots();
       } catch (e) {
         document.getElementById('driveStatusLabel').textContent = 'Erro ao verificar conexão';
       }
@@ -1323,312 +1324,171 @@
       checkDriveStatus();
     }
 
-    // ── Drive Favorites ───────────────────────────────────
+    // ── Drive Slots (Board › Lista › Card) ───────────────
     function loadDriveFav() { return { ...driveFav }; }
     function saveDriveFav(fav) {
       driveFav = fav;
       apiFetch('/api/userdata', { method: 'PATCH', body: JSON.stringify({ drive_fav: fav }) }).catch(() => {});
     }
 
-    let driveActiveCliente = null;
+    function getSlots() {
+      return Array.isArray(driveFav.slots) ? driveFav.slots : [];
+    }
 
-    function getFavClientes() {
-      const fav = loadDriveFav();
-      // migrate old scalar format
-      if (fav.cliente && !fav.clientes) {
-        fav.clientes = [String(fav.cliente)]; delete fav.cliente; saveDriveFav(fav);
+    function formatCardDesc(desc) {
+      return desc.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/(https?:\/\/[^\s]+)/g, url => {
+          const m = url.match(/drive\.google\.com[^\s"'<)]*(?:folders\/|id=)([a-zA-Z0-9_-]{10,})/);
+          if (m) {
+            const fid = m[1]; const label = url.replace(/&amp;/g,'&');
+            return `<a href="#" onclick="selecionarDriveLink('${fid}','',event)" style="color:var(--accent);font-weight:500;word-break:break-all;text-decoration:none">
+              <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:6px;background:var(--accent-dim);border:1px solid rgba(99,102,241,0.2);font-size:0.78rem">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                Selecionar esta pasta
+              </span>
+            </a><br><span style="font-size:0.72rem;color:var(--text3);word-break:break-all">${url}</span>`;
+          }
+          return `<a href="${url}" target="_blank" style="color:var(--accent);word-break:break-all;font-size:0.78rem">${url}</a>`;
+        })
+        .replace(/\n/g,'<br>');
+    }
+
+    function extractDriveLinks(desc) {
+      const links = [];
+      const re = /https?:\/\/[^\s"'<)]+/g;
+      let m;
+      while ((m = re.exec(desc)) !== null) {
+        const url = m[0];
+        const fm = url.match(/drive\.google\.com[^\s"'<)]*(?:folders\/|id=)([a-zA-Z0-9_-]{10,})/);
+        if (fm) links.push({ url, folderId: fm[1] });
       }
-      return (fav.clientes || []).map(String);
+      return links;
     }
 
-    function favBtn(type, id) {
-      const fav = loadDriveFav();
-      const isFav = fav[type] === id;
-      return `<button onclick="toggleDriveFav('${type}','${id}',this)" title="${isFav?'Remover favorito':'Salvar como favorito'}"
-        style="background:none;border:none;cursor:pointer;font-size:1rem;line-height:1;padding:2px 4px;opacity:${isFav?1:0.35};transition:opacity .15s;flex-shrink:0">${isFav?'⭐':'☆'}</button>`;
-    }
-
-    function toggleDriveFav(type, id, btn) {
-      const fav = loadDriveFav();
-      if (fav[type] === id) { delete fav[type]; btn.textContent='☆'; btn.style.opacity='0.35'; btn.title='Salvar como favorito'; }
-      else { fav[type] = id; btn.textContent='⭐'; btn.style.opacity='1'; btn.title='Remover favorito'; }
-      saveDriveFav(fav);
-    }
-
-    function renderDriveFavChips(favClientes) {
-      const el = document.getElementById('driveFavChips');
-      el.innerHTML = favClientes.map(gi => {
-        const c = clientes[+gi];
-        if (!c) return '';
-        const isActive = driveActiveCliente === String(gi);
-        return `<button onclick="activateClient('${gi}')"
-          style="display:inline-flex;align-items:center;gap:5px;padding:5px 8px 5px 10px;border-radius:8px;border:1.5px solid ${isActive?'var(--accent)':'var(--border2)'};background:${isActive?'var(--accent-dim)':'var(--surface2)'};color:${isActive?'var(--accent-hover)':'var(--text2)'};font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap">
-          ⭐ ${c.nome}
-          <span onclick="removeFavCliente('${gi}',event)" style="opacity:0.5;font-size:1.1em;line-height:1;padding:0 2px;margin-left:1px" title="Remover favorito">×</span>
-        </button>`;
+    function renderDriveSlots() {
+      const slots = getSlots();
+      const wrap = document.getElementById('driveSlotsWrap');
+      if (!slots.length) {
+        wrap.innerHTML = `<div style="padding:24px;text-align:center;color:var(--text3);font-size:0.85rem">
+          Nenhum favorito. Clique em <strong>+ Adicionar</strong> para criar seu primeiro.
+        </div>`;
+        return;
+      }
+      wrap.innerHTML = slots.map((slot, si) => {
+        const links = extractDriveLinks(slot.cardDesc || '');
+        const linksHtml = links.length
+          ? links.map(l => `
+            <a href="#" onclick="selecionarDriveLink('${l.folderId}','',event)"
+               style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;background:var(--accent-dim);border:1px solid rgba(99,102,241,0.2);font-size:0.78rem;color:var(--accent);text-decoration:none;font-weight:500;margin-top:8px;margin-right:4px">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              Selecionar pasta
+            </a>`).join('')
+          : `<span style="font-size:0.75rem;color:var(--text3);margin-top:6px;display:block">Nenhum link de Drive na descrição</span>`;
+        return `<div class="card" style="margin-bottom:8px;padding:12px 14px">
+          <div style="display:flex;align-items:flex-start;gap:8px">
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;flex-direction:column;gap:2px;margin-bottom:4px">
+                <span style="font-size:0.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;font-weight:600">Board</span>
+                <span style="font-size:0.82rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${slot.boardName || '—'}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:2px;margin-bottom:4px">
+                <span style="font-size:0.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;font-weight:600">Lista</span>
+                <span style="font-size:0.82rem;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${slot.listName || '—'}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <span style="font-size:0.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;font-weight:600">Card</span>
+                <span style="font-size:0.82rem;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${slot.cardName || '—'}</span>
+              </div>
+              <div>${linksHtml}</div>
+            </div>
+            <button onclick="removeSlot(${si})" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);flex-shrink:0;font-size:1.1rem;line-height:1;margin-top:-2px" title="Remover">×</button>
+          </div>
+        </div>`;
       }).join('');
     }
 
-    function populateDriveAddSelect(favClientes) {
-      const favSet = new Set(favClientes);
-      const sel = document.getElementById('driveAddClienteSelect');
-      sel.innerHTML = '<option value="">+ Outro cliente...</option>';
-      clientes.filter(c => c.ativo).forEach(c => {
-        const gi = String(clientes.indexOf(c));
-        if (!favSet.has(gi)) sel.innerHTML += `<option value="${gi}">${c.nome}</option>`;
-      });
-    }
-
-    function populateDriveClientes() {
-      const favClientes = getFavClientes();
-      renderDriveFavChips(favClientes);
-      populateDriveAddSelect(favClientes);
-      if (favClientes.length > 0 && !driveActiveCliente) activateClient(favClientes[0]);
-    }
-
-    function onDriveAddCliente(sel) {
-      const gi = sel.value;
-      document.getElementById('driveAddClienteFavBtn').innerHTML = gi
-        ? `<button onclick="addFavCliente('${gi}')" title="Favoritar este cliente"
-            style="background:none;border:none;cursor:pointer;font-size:1rem;padding:2px 4px;opacity:0.4;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.4">☆</button>`
-        : '';
-      if (gi) activateClient(gi);
-    }
-
-    function addFavCliente(gi) {
+    function removeSlot(si) {
       const fav = loadDriveFav();
-      if (!fav.clientes) fav.clientes = [];
-      if (!fav.clientes.includes(String(gi))) { fav.clientes.push(String(gi)); saveDriveFav(fav); }
-      const favClientes = getFavClientes();
-      renderDriveFavChips(favClientes);
-      populateDriveAddSelect(favClientes);
-      document.getElementById('driveAddClienteSelect').value = '';
-      document.getElementById('driveAddClienteFavBtn').innerHTML = '';
-    }
-
-    function removeFavCliente(gi, e) {
-      e.stopPropagation();
-      const fav = loadDriveFav();
-      fav.clientes = (fav.clientes || []).filter(id => String(id) !== String(gi));
+      fav.slots = (fav.slots || []).filter((_, i) => i !== si);
       saveDriveFav(fav);
-      const favClientes = getFavClientes();
-      renderDriveFavChips(favClientes);
-      populateDriveAddSelect(favClientes);
-      if (driveActiveCliente === String(gi)) {
-        driveActiveCliente = favClientes[0] || null;
-        if (driveActiveCliente) activateClient(driveActiveCliente);
-        else {
-          document.getElementById('driveListaSelectWrap').style.display = 'none';
-          document.getElementById('driveCardsCard').style.display = 'none';
-          document.getElementById('driveBrowserPanel').style.display = 'none';
-        }
-      }
+      renderDriveSlots();
     }
 
-    function getFavListas(gi) {
-      const fav = loadDriveFav();
-      if (fav.lista && !fav.listas) {
-        fav.listas = {}; delete fav.lista; saveDriveFav(fav);
-      }
-      return (fav.listas || {})[String(gi)] || [];
+    // ── Add-slot panel ────────────────────────────────────
+    function showAddSlot() {
+      const panel = document.getElementById('driveAddSlotPanel');
+      panel.style.display = 'block';
+      document.getElementById('driveAddSlotBtn').style.display = 'none';
+      // Populate board dropdown
+      const sel = document.getElementById('driveSlotBoard');
+      sel.innerHTML = '<option value="">Board / cliente...</option>';
+      clientes.filter(c => c.ativo).forEach((c, i) => {
+        sel.innerHTML += `<option value="${clientes.indexOf(c)}">${c.nome}</option>`;
+      });
+      document.getElementById('driveSlotLista').innerHTML = '<option value="">Lista...</option>';
+      document.getElementById('driveSlotLista').disabled = true;
+      document.getElementById('driveSlotCard').innerHTML = '<option value="">Card...</option>';
+      document.getElementById('driveSlotCard').disabled = true;
     }
 
-    function getFavCards() {
-      const fav = loadDriveFav();
-      if (fav.card && !fav.cards) {
-        fav.cards = [fav.card]; delete fav.card; saveDriveFav(fav);
-      }
-      return Array.isArray(fav.cards) ? fav.cards : [];
+    function cancelAddSlot() {
+      document.getElementById('driveAddSlotPanel').style.display = 'none';
+      document.getElementById('driveAddSlotBtn').style.display = '';
     }
 
-    function updateListaTrigger() {
-      const checked = [...document.querySelectorAll('#driveListaMsDropdown input:checked')];
-      const trigger = document.getElementById('driveListaMsTrigger');
-      if (!checked.length) { trigger.textContent = 'Selecione listas...'; return; }
-      const names = checked.map(cb => cb.closest('.ms-option').textContent.trim());
-      trigger.textContent = names.length === 1 ? names[0] : `${names.length} listas selecionadas`;
-    }
-
-    async function activateClient(gi) {
-      driveActiveCliente = String(gi);
-      renderDriveFavChips(getFavClientes());
-      const trigger = document.getElementById('driveListaMsTrigger');
-      const dropdown = document.getElementById('driveListaMsDropdown');
-      const listWrap = document.getElementById('driveListaSelectWrap');
-      document.getElementById('driveCardsCard').style.display = 'none';
-      document.getElementById('driveBrowserPanel').style.display = 'none';
-      trigger.textContent = 'Carregando...';
-      trigger.classList.remove('open');
-      dropdown.innerHTML = '';
-      listWrap.style.display = 'block';
-
+    async function onSlotBoardChange() {
+      const gi = document.getElementById('driveSlotBoard').value;
+      const listaSel = document.getElementById('driveSlotLista');
+      const cardSel  = document.getElementById('driveSlotCard');
+      listaSel.innerHTML = '<option value="">Carregando...</option>';
+      listaSel.disabled = true;
+      cardSel.innerHTML = '<option value="">Card...</option>';
+      cardSel.disabled = true;
+      if (!gi) { listaSel.innerHTML = '<option value="">Lista...</option>'; return; }
       try {
         const c = clientes[+gi];
         const lists = await tFetch(`/boards/${c.boardId}/lists?filter=open`);
-        const favListas = getFavListas(gi);
-        dropdown.innerHTML = lists.map(l => {
-          const checked = favListas.includes(l.id) || (favListas.length === 0 && lists.length === 1);
-          return `<label class="ms-option"><input type="checkbox" value="${l.id}" ${checked?'checked':''} onchange="updateListaTrigger()">${l.name}</label>`;
-        }).join('');
-        updateListaTrigger();
-        if (favListas.length > 0 || lists.length === 1) loadSelectedListsCards();
-      } catch (err) {
-        trigger.textContent = 'Erro ao carregar listas';
-      }
+        listaSel.innerHTML = '<option value="">Lista...</option>' +
+          lists.map(l => `<option value="${l.id}" data-name="${l.name.replace(/"/g,'&quot;')}">${l.name}</option>`).join('');
+        listaSel.disabled = false;
+      } catch { listaSel.innerHTML = '<option value="">Erro</option>'; }
     }
 
-    async function loadSelectedListsCards() {
-      closeAllDropdowns();
-      const checked = [...document.querySelectorAll('#driveListaMsDropdown input:checked')];
-      const listIds  = checked.map(cb => cb.value);
-      const listNames = checked.map(cb => cb.closest('.ms-option').textContent.trim());
-
-      if (!listIds.length) {
-        document.getElementById('driveLinksWrap').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Selecione pelo menos uma lista.</span>';
-        document.getElementById('driveCardsCard').style.display = 'block';
-        return;
-      }
-
-      // Auto-save the current selection as favorites for this client
-      const gi = driveActiveCliente;
-      if (gi) {
-        const fav = loadDriveFav();
-        if (!fav.listas) fav.listas = {};
-        fav.listas[gi] = listIds;
-        saveDriveFav(fav);
-      }
-
-      document.getElementById('driveBrowserPanel').style.display = 'none';
-      document.getElementById('driveLinksWrap').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Buscando cards...</span>';
-      document.getElementById('driveCardsCard').style.display = 'block';
-
+    async function onSlotListaChange() {
+      const listId = document.getElementById('driveSlotLista').value;
+      const cardSel = document.getElementById('driveSlotCard');
+      cardSel.innerHTML = '<option value="">Carregando...</option>';
+      cardSel.disabled = true;
+      if (!listId) { cardSel.innerHTML = '<option value="">Card...</option>'; return; }
       try {
-        // Fetch cards per list, keeping list context
-        const listsData = [];
-        for (let i = 0; i < listIds.length; i++) {
-          const cards = await tFetch(`/lists/${listIds[i]}/cards`);
-          listsData.push({ name: listNames[i], cards });
-        }
-        const total = listsData.reduce((s, l) => s + l.cards.length, 0);
-        if (!total) {
-          document.getElementById('driveLinksWrap').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Nenhum card nas listas selecionadas.</span>';
-          return;
-        }
-
-        const favCards = getFavCards();
-        const multiList = listsData.length > 1;
-        const listHeader = name =>
-          `<div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin:10px 0 4px;padding-bottom:4px;border-bottom:1px solid var(--border)">${name}</div>`;
-
-        let ci = 0;
-        let favHtml = '';
-        let restHtml = '';
-        let restCount = 0;
-
-        for (const list of listsData) {
-          const faved = list.cards.filter(c => favCards.includes(c.id));
-          const rest  = list.cards.filter(c => !favCards.includes(c.id));
-          if (faved.length) {
-            if (multiList) favHtml += listHeader(list.name);
-            favHtml += faved.map(card => buildCardHtml(card, ci++)).join('');
-          }
-          if (rest.length) {
-            if (multiList) restHtml += listHeader(list.name);
-            restHtml += rest.map(card => buildCardHtml(card, ci++)).join('');
-            restCount += rest.length;
-          }
-          // If no faved in this list, still need to show in rest (already handled above)
-          if (!faved.length && !rest.length) { /* empty list */ }
-        }
-
-        // If nothing was favorited, show everything normally (no fav/rest split)
-        if (!favHtml) {
-          document.getElementById('driveLinksWrap').innerHTML = listsData.map(list => {
-            if (!list.cards.length) return '';
-            return (multiList ? listHeader(list.name) : '') + list.cards.map(card => buildCardHtml(card, ci++)).join('');
-          }).join('');
-          return;
-        }
-
-        const restSection = restCount
-          ? `<div id="driveRestWrap" style="display:none">${restHtml}</div>
-             <div style="display:flex;justify-content:center;margin-top:8px">
-               <button id="driveShowRestBtn" onclick="driveShowRestCards()"
-                 style="background:none;border:1px solid var(--border2);color:var(--text2);font-size:0.78rem;padding:5px 14px;border-radius:7px;cursor:pointer">
-                 Ver demais cards (${restCount}) ▸
-               </button>
-             </div>`
-          : '';
-
-        document.getElementById('driveLinksWrap').innerHTML = favHtml + restSection;
-      } catch (err) {
-        document.getElementById('driveLinksWrap').innerHTML = `<span style="color:var(--red);font-size:0.82rem">Erro: ${err.message}</span>`;
-      }
+        const cards = await tFetch(`/lists/${listId}/cards`);
+        cardSel.innerHTML = '<option value="">Card...</option>' +
+          cards.map(c => `<option value="${c.id}" data-name="${c.name.replace(/"/g,'&quot;')}" data-desc="${encodeURIComponent(c.desc||'')}">${c.name}</option>`).join('');
+        cardSel.disabled = false;
+      } catch { cardSel.innerHTML = '<option value="">Erro</option>'; }
     }
 
-    function driveShowRestCards() {
-      document.getElementById('driveRestWrap').style.display = 'block';
-      document.getElementById('driveShowRestBtn').style.display = 'none';
-    }
-
-    function buildCardHtml(card, ci) {
-      const desc = (card.desc || '').trim();
-      const descHtml = desc
-        ? desc.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-              .replace(/(https?:\/\/[^\s]+)/g, url => {
-                const m = url.match(/drive\.google\.com[^\s"'<)]*(?:folders\/|id=)([a-zA-Z0-9_-]{10,})/);
-                if (m) {
-                  const fid = m[1];
-                  const safeName = card.name.replace(/'/g,"\\'");
-                  return `<a href="#" onclick="selecionarDriveLink('${fid}','${safeName}',event)" style="color:var(--accent);font-weight:500;word-break:break-all;text-decoration:none">
-                    <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:6px;background:var(--accent-dim);border:1px solid rgba(99,102,241,0.2);font-size:0.78rem">
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                      Selecionar esta pasta
-                    </span>
-                  </a><br><span style="font-size:0.72rem;color:var(--text3);word-break:break-all">${url}</span>`;
-                }
-                return `<a href="${url}" target="_blank" style="color:var(--accent);word-break:break-all;font-size:0.78rem">${url}</a>`;
-              })
-              .replace(/\n/g,'<br>')
-        : '<span style="color:var(--text3);font-size:0.78rem">Sem descrição</span>';
-
-      const safeName = card.name.replace(/&/g,'&amp;').replace(/</g,'&lt;');
-      const isCardFav = getFavCards().includes(card.id);
-      return `<div style="border:1px solid ${isCardFav?'var(--accent)':'var(--border)'};border-radius:8px;margin-bottom:6px;background:var(--surface);overflow:hidden">
-        <div style="display:flex;align-items:center">
-          <button onclick="toggleCardDesc(${ci})" style="flex:1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px;background:none;border:none;color:var(--text);font-family:inherit;font-size:0.84rem;font-weight:600;cursor:pointer;text-align:left">
-            <span>${isCardFav?'⭐ ':''}${safeName}</span>
-            <svg id="card-chevron-${ci}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;color:var(--text3);transition:transform .2s"><path d="m6 9 6 6 6-6"/></svg>
-          </button>
-          <button onclick="toggleFavCard('${card.id}',this)" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:8px 12px 8px 4px;opacity:${isCardFav?1:0.3};transition:opacity .15s" title="${isCardFav?'Remover favorito':'Favoritar card'}">${isCardFav?'⭐':'☆'}</button>
-        </div>
-        <div id="card-desc-${ci}" style="display:none;padding:10px 14px 12px;font-size:0.8rem;color:var(--text2);line-height:1.8;border-top:1px solid var(--border)">
-          ${descHtml}
-        </div>
-      </div>`;
-    }
-
-    function toggleFavCard(cardId, btn) {
+    async function saveSlot() {
+      const giBoardSel = document.getElementById('driveSlotBoard');
+      const listaSel   = document.getElementById('driveSlotLista');
+      const cardSel    = document.getElementById('driveSlotCard');
+      const gi = giBoardSel.value;
+      const listId = listaSel.value;
+      const cardId = cardSel.value;
+      if (!gi || !listId || !cardId) { alert('Selecione board, lista e card.'); return; }
+      const boardName = giBoardSel.options[giBoardSel.selectedIndex].text;
+      const listName  = listaSel.options[listaSel.selectedIndex].text;
+      const cardOpt   = cardSel.options[cardSel.selectedIndex];
+      const cardName  = cardOpt.text;
+      const cardDesc  = decodeURIComponent(cardOpt.dataset.desc || '');
       const fav = loadDriveFav();
-      if (!fav.cards) fav.cards = [];
-      const idx = fav.cards.indexOf(cardId);
-      if (idx >= 0) {
-        fav.cards.splice(idx, 1);
-        if (btn) { btn.textContent = '☆'; btn.style.opacity = '0.3'; btn.title = 'Favoritar card'; }
-      } else {
-        fav.cards.push(cardId);
-        if (btn) { btn.textContent = '⭐'; btn.style.opacity = '1'; btn.title = 'Remover favorito'; }
-      }
+      if (!fav.slots) fav.slots = [];
+      fav.slots.push({ gi, listId, cardId, boardName, listName, cardName, cardDesc });
       saveDriveFav(fav);
+      cancelAddSlot();
+      renderDriveSlots();
     }
 
-    function toggleCardDesc(ci) {
-      const desc = document.getElementById(`card-desc-${ci}`);
-      const chev = document.getElementById(`card-chevron-${ci}`);
-      const open = desc.style.display === 'none';
-      desc.style.display = open ? 'block' : 'none';
-      chev.style.transform = open ? 'rotate(180deg)' : '';
-    }
 
     async function selecionarDriveLink(folderId, cardName, e) {
       if (e && e.preventDefault) e.preventDefault();
