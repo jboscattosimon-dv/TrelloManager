@@ -505,6 +505,22 @@
     }
     .modal-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
 
+    /* ── Drive Calendar ─────────────────────── */
+    .cal-header { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+    .cal-month-label { flex:1; text-align:center; font-size:0.88rem; font-weight:700; }
+    .cal-nav { width:28px; height:28px; border-radius:6px; border:1px solid var(--border2); background:var(--surface2); color:var(--text2); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:1rem; line-height:1; transition:all .15s; font-family:inherit; flex-shrink:0; }
+    .cal-nav:hover { border-color:var(--border); color:var(--text); }
+    .cal-dow { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; margin-bottom:4px; }
+    .cal-dow span { text-align:center; font-size:0.62rem; font-weight:600; color:var(--text3); text-transform:uppercase; padding:3px 0; }
+    .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+    .cal-day { aspect-ratio:1; border:none; border-radius:6px; background:transparent; color:var(--text2); font-size:0.78rem; cursor:pointer; font-family:inherit; transition:all .12s; display:flex; align-items:center; justify-content:center; }
+    .cal-day:hover:not(.cal-sel) { background:var(--surface2); color:var(--text); }
+    .cal-day.cal-sel { background:var(--accent); color:#fff; font-weight:600; }
+    .cal-day.cal-sel:hover { background:var(--accent-hover); }
+    .cal-day.cal-weekend { color:var(--text3); }
+    .cal-day.cal-weekend.cal-sel { color:#fff; }
+    .cal-empty { aspect-ratio:1; }
+
     /* ── Scrollbar ──────────────────────────── */
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -702,28 +718,33 @@
               </div>
             </div>
 
-            <!-- Criar pastas de datas -->
+            <!-- Criar pastas -->
             <div class="card" id="driveCriarCard">
-              <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:16px">Criar pastas de datas aqui</div>
-              <div class="row-2" style="margin-bottom:16px">
-                <div class="form-group" style="margin:0">
-                  <label class="form-label">Mês</label>
-                  <select id="driveMes">
-                    <option value="1">Janeiro</option><option value="2">Fevereiro</option>
-                    <option value="3">Março</option><option value="4">Abril</option>
-                    <option value="5">Maio</option><option value="6">Junho</option>
-                    <option value="7">Julho</option><option value="8">Agosto</option>
-                    <option value="9">Setembro</option><option value="10">Outubro</option>
-                    <option value="11">Novembro</option><option value="12">Dezembro</option>
-                  </select>
+
+              <!-- Calendário -->
+              <div style="margin-bottom:18px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                  <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3)">Selecionar datas</div>
+                  <div style="display:flex;gap:6px">
+                    <button class="btn btn-ghost btn-sm" onclick="calSelectMonth()">Mês todo</button>
+                    <button class="btn btn-ghost btn-sm" onclick="calClear()">Limpar</button>
+                  </div>
                 </div>
-                <div class="form-group" style="margin:0">
-                  <label class="form-label">Ano</label>
-                  <input type="number" id="driveAno" value="2026" min="2024" max="2030">
+                <div class="cal-header">
+                  <button class="cal-nav" onclick="calPrev()">‹</button>
+                  <div class="cal-month-label" id="calMonthLabel"></div>
+                  <button class="cal-nav" onclick="calNext()">›</button>
                 </div>
+                <div class="cal-dow">
+                  <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
+                </div>
+                <div class="cal-grid" id="calGrid"></div>
+                <div style="margin-top:8px;font-size:0.75rem;color:var(--text3)" id="calCount"></div>
               </div>
+
+              <!-- Dias da semana (para seleção rápida de mês todo) -->
               <div class="form-group">
-                <label class="form-label">Dias da semana</label>
+                <label class="form-label">Dias da semana <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)">(filtro para "Mês todo")</span></label>
                 <div class="day-grid" id="driveDias">
                   <span class="day-chip on" data-d="1">Seg</span>
                   <span class="day-chip on" data-d="2">Ter</span>
@@ -734,6 +755,8 @@
                   <span class="day-chip" data-d="0">Dom</span>
                 </div>
               </div>
+
+              <!-- Formato -->
               <div class="form-group" style="margin-bottom:20px">
                 <label class="form-label">Formato do nome</label>
                 <select id="driveFormato">
@@ -743,12 +766,24 @@
                   <option value="nome dd/mm">Seg 01/05  (dia semana + data)</option>
                 </select>
               </div>
+
               <button class="btn btn-primary" id="btnCriarPastas" onclick="criarPastasDrive()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
                 Criar Pastas
               </button>
               <div class="progress-wrap" id="progressDrive" style="margin-top:14px"><div class="progress-bar" id="progressBarDrive"></div></div>
               <div class="log-box" id="logDrive"></div>
+
+              <!-- Pasta solo -->
+              <div style="border-top:1px solid var(--border);margin-top:24px;padding-top:20px">
+                <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);margin-bottom:10px">Criar pasta com nome personalizado</div>
+                <div style="display:flex;gap:8px">
+                  <input type="text" id="drivePastaSoloNome" placeholder="Nome da pasta" style="flex:1">
+                  <button class="btn btn-ghost" onclick="criarPastaSolo()">Criar</button>
+                </div>
+                <div id="driveSoloLog" style="margin-top:8px;font-size:0.78rem"></div>
+              </div>
+
             </div>
 
           </div>
@@ -1333,6 +1368,10 @@
         document.getElementById('driveDestinoNome').textContent = info.name;
         document.getElementById('driveDestinoLink').href = `https://drive.google.com/drive/folders/${folderId}`;
         document.getElementById('driveBrowserPanel').style.display = 'block';
+        calYear = new Date().getFullYear();
+        calMonth = new Date().getMonth();
+        selectedDates.clear();
+        renderCalendar();
         await loadDriveSubfolders(folderId);
       } catch (err) {
         alert('Erro ao acessar pasta: ' + err.message);
@@ -1394,6 +1433,52 @@
       return [...document.querySelectorAll('#driveDias .day-chip.on')].map(c => +c.dataset.d);
     }
 
+    // ── Calendário ────────────────────────────────────────
+    let calYear = new Date().getFullYear();
+    let calMonth = new Date().getMonth();
+    let selectedDates = new Set();
+
+    function renderCalendar() {
+      document.getElementById('calMonthLabel').textContent = `${MESES_NOME[calMonth + 1]} ${calYear}`;
+      const firstDow = new Date(calYear, calMonth, 1).getDay();
+      const lastDay = new Date(calYear, calMonth + 1, 0).getDate();
+      let html = '';
+      for (let i = 0; i < firstDow; i++) html += '<div class="cal-empty"></div>';
+      for (let d = 1; d <= lastDay; d++) {
+        const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const dow = new Date(calYear, calMonth, d).getDay();
+        const weekend = dow === 0 || dow === 6;
+        const sel = selectedDates.has(ds);
+        html += `<button class="cal-day${sel?' cal-sel':''}${weekend?' cal-weekend':''}" onclick="toggleCalDay('${ds}')">${d}</button>`;
+      }
+      document.getElementById('calGrid').innerHTML = html;
+      const n = selectedDates.size;
+      document.getElementById('calCount').textContent = n ? `${n} dia${n>1?'s':''} selecionado${n>1?'s':''}` : '';
+    }
+
+    function toggleCalDay(ds) {
+      if (selectedDates.has(ds)) selectedDates.delete(ds);
+      else selectedDates.add(ds);
+      renderCalendar();
+    }
+
+    function calPrev() { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); }
+    function calNext() { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); }
+
+    function calSelectMonth() {
+      const dias = getDriveDias();
+      const lastDay = new Date(calYear, calMonth + 1, 0).getDate();
+      for (let d = 1; d <= lastDay; d++) {
+        const date = new Date(calYear, calMonth, d);
+        if (dias.includes(date.getDay())) {
+          selectedDates.add(`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
+        }
+      }
+      renderCalendar();
+    }
+
+    function calClear() { selectedDates.clear(); renderCalendar(); }
+
     function formatarNomePasta(date, formato) {
       const dd = String(date.getDate()).padStart(2,'0');
       const mm = String(date.getMonth()+1).padStart(2,'0');
@@ -1405,23 +1490,13 @@
     }
 
     async function criarPastasDrive() {
-      const mes = +document.getElementById('driveMes').value;
-      const ano = +document.getElementById('driveAno').value;
-      const dias = getDriveDias();
+      if (!driveCurrentFolderId) return alert('Selecione a pasta de destino');
+      if (!selectedDates.size) return alert('Selecione ao menos uma data no calendário');
       const formato = document.getElementById('driveFormato').value;
-      const parentId = driveCurrentFolderId;
-
-      if (!parentId) return alert('Selecione a pasta de destino');
-      if (!dias.length) return alert('Selecione ao menos um dia da semana');
-
-      // Gera todos os dias do mês selecionado
-      const nomes = [];
-      const d = new Date(ano, mes - 1, 1);
-      while (d.getMonth() === mes - 1) {
-        if (dias.includes(d.getDay())) nomes.push(formatarNomePasta(new Date(d), formato));
-        d.setDate(d.getDate() + 1);
-      }
-      if (!nomes.length) return alert('Nenhum dia encontrado para o período selecionado');
+      const nomes = [...selectedDates].sort().map(ds => {
+        const [y,m,d] = ds.split('-').map(Number);
+        return formatarNomePasta(new Date(y, m-1, d), formato);
+      });
 
       const logEl = document.getElementById('logDrive');
       logEl.innerHTML = ''; logEl.style.display = 'block';
@@ -1435,12 +1510,11 @@
       logMsg(logEl, `Criando ${nomes.length} pastas em "${pastaDestino}"...`, 'log-info');
 
       try {
-        // Envia em lotes de 10
         const lote = 10;
         let feito = 0;
         for (let i = 0; i < nomes.length; i += lote) {
           const batch = nomes.slice(i, i + lote);
-          const results = await driveApi('/folders', { method: 'POST', body: JSON.stringify({ parentId, names: batch }) });
+          const results = await driveApi('/folders', { method: 'POST', body: JSON.stringify({ parentId: driveCurrentFolderId, names: batch }) });
           results.forEach(r => {
             if (r.status === 'created') logMsg(logEl, `  ✓ ${r.name}`, 'log-ok');
             else logMsg(logEl, `  ↷ ${r.name} — já existe`);
@@ -1449,12 +1523,31 @@
           pb.style.width = `${Math.round(feito/nomes.length*100)}%`;
         }
         logMsg(logEl, '<br>Concluído!', 'log-ok');
-        // Recarrega subpastas
-        await loadDriveSubfolders(parentId);
+        await loadDriveSubfolders(driveCurrentFolderId);
       } catch (err) {
         logMsg(logEl, `Erro: ${err.message}`, 'log-err');
       }
       btn.disabled = false;
+    }
+
+    async function criarPastaSolo() {
+      const nome = document.getElementById('drivePastaSoloNome').value.trim();
+      if (!nome) return;
+      if (!driveCurrentFolderId) return alert('Selecione a pasta de destino');
+      const logEl = document.getElementById('driveSoloLog');
+      logEl.textContent = 'Criando...';
+      logEl.style.color = 'var(--text3)';
+      try {
+        const results = await driveApi('/folders', { method: 'POST', body: JSON.stringify({ parentId: driveCurrentFolderId, names: [nome] }) });
+        const r = results[0];
+        logEl.textContent = r.status === 'created' ? `✓ Pasta "${nome}" criada` : `↷ "${nome}" já existe`;
+        logEl.style.color = r.status === 'created' ? 'var(--green)' : 'var(--text3)';
+        document.getElementById('drivePastaSoloNome').value = '';
+        await loadDriveSubfolders(driveCurrentFolderId);
+      } catch (err) {
+        logEl.textContent = 'Erro: ' + err.message;
+        logEl.style.color = 'var(--red)';
+      }
     }
 
     // ── Configurações ─────────────────────────────────────
