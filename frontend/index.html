@@ -412,17 +412,14 @@
     .ms-trigger.open { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
     .ms-dropdown {
       display: none;
-      position: absolute;
-      top: calc(100% + 4px);
-      left: 0;
-      min-width: 100%;
+      position: fixed;
       background: var(--surface);
       border: 1px solid var(--border2);
       border-radius: var(--radius);
       box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-      z-index: 200;
+      z-index: 9999;
       padding: 6px;
-      max-height: 220px;
+      max-height: 240px;
       overflow-y: auto;
     }
     .ms-dropdown.open { display: block; }
@@ -1782,15 +1779,26 @@
       document.querySelectorAll('.ms-dropdown.open').forEach(d => {
         d.classList.remove('open'); d.previousElementSibling.classList.remove('open');
       });
-      if (!isOpen) { drop.classList.add('open'); btn.classList.add('open'); }
+      if (!isOpen) {
+        const rect = btn.getBoundingClientRect();
+        const dropH = 240;
+        const spaceBelow = window.innerHeight - rect.bottom - 8;
+        const top = spaceBelow >= dropH ? rect.bottom + 4 : Math.max(8, rect.top - dropH - 4);
+        drop.style.top = top + 'px';
+        drop.style.left = rect.left + 'px';
+        drop.style.minWidth = rect.width + 'px';
+        drop.classList.add('open'); btn.classList.add('open');
+      }
     }
 
-    document.addEventListener('click', e => {
-      if (!e.target.closest('.ms-wrap')) {
-        document.querySelectorAll('.ms-dropdown.open').forEach(d => {
-          d.classList.remove('open'); d.previousElementSibling.classList.remove('open');
-        });
-      }
+    function closeAllDropdowns() {
+      document.querySelectorAll('.ms-dropdown.open').forEach(d => {
+        d.classList.remove('open'); d.previousElementSibling.classList.remove('open');
+      });
+    }
+    document.addEventListener('click', e => { if (!e.target.closest('.ms-wrap')) closeAllDropdowns(); });
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelector('.content')?.addEventListener('scroll', closeAllDropdowns);
     });
 
     function toggleLista(gi, lid, checked, wrap) {
