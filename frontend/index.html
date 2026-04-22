@@ -701,11 +701,15 @@
             </div>
             <div id="driveListaSelectWrap" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
               <div style="display:flex;align-items:center;gap:8px">
-                <span style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);white-space:nowrap;flex-shrink:0">Lista</span>
-                <select id="driveListaSelect" onchange="onDriveListaSelectChange()" style="flex:1">
-                  <option value="">Selecione uma lista...</option>
-                </select>
-                <span id="driveListaFavBtn"></span>
+                <span style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3);white-space:nowrap;flex-shrink:0">Listas</span>
+                <div class="ms-wrap" style="flex:1">
+                  <button class="ms-trigger" id="driveListaMsTrigger" onclick="toggleDropdown(this)">Selecione listas...</button>
+                  <div class="ms-dropdown" id="driveListaMsDropdown"></div>
+                </div>
+                <button onclick="favListasSelecionadas()" id="driveListasFavBtn" title="Salvar seleção como favorita"
+                  style="background:none;border:none;cursor:pointer;font-size:1rem;line-height:1;padding:2px 4px;opacity:0.4;flex-shrink:0;transition:opacity .15s"
+                  onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.4">☆</button>
+                <button class="btn btn-ghost btn-sm" onclick="loadSelectedListsCards()" style="flex-shrink:0">Ver cards</button>
               </div>
             </div>
           </div>
@@ -1310,7 +1314,7 @@
                Conectar Google Drive
              </button>`;
         document.getElementById('driveMain').style.display = connected ? 'block' : 'none';
-        if (connected) { driveShowAll.lista = false; driveShowAll.card = false; driveActiveCliente = null; populateDriveClientes(); }
+        if (connected) { driveActiveCliente = null; populateDriveClientes(); }
       } catch (e) {
         document.getElementById('driveStatusLabel').textContent = 'Erro ao verificar conexão';
       }
@@ -1329,7 +1333,6 @@
       apiFetch('/api/userdata', { method: 'PATCH', body: JSON.stringify({ drive_fav: fav }) }).catch(() => {});
     }
 
-    const driveShowAll = { lista: false, card: false };
     let driveActiveCliente = null;
 
     function getFavClientes() {
@@ -1425,46 +1428,107 @@
       }
     }
 
+    function getFavListas(gi) {
+      const fav = loadDriveFav();
+      if (fav.lista && !fav.listas) {
+        fav.listas = {}; delete fav.lista; saveDriveFav(fav);
+      }
+      return (fav.listas || {})[String(gi)] || [];
+    }
+
+    function getFavCards() {
+      const fav = loadDriveFav();
+      if (fav.card && !fav.cards) {
+        fav.cards = [fav.card]; delete fav.card; saveDriveFav(fav);
+      }
+      return Array.isArray(fav.cards) ? fav.cards : [];
+    }
+
+    function favListasSelecionadas() {
+      const gi = driveActiveCliente;
+      if (!gi) return;
+      const checked = [...document.querySelectorAll('#driveListaMsDropdown input:checked')].map(cb => cb.value);
+      const fav = loadDriveFav();
+      if (!fav.listas) fav.listas = {};
+      fav.listas[gi] = checked;
+      saveDriveFav(fav);
+      const btn = document.getElementById('driveListasFavBtn');
+      btn.textContent = '⭐'; btn.style.opacity = '1';
+      setTimeout(() => { btn.textContent = '☆'; btn.style.opacity = '0.4'; }, 2000);
+    }
+
+    function updateListaTrigger() {
+      const checked = [...document.querySelectorAll('#driveListaMsDropdown input:checked')];
+      const trigger = document.getElementById('driveListaMsTrigger');
+      if (!checked.length) { trigger.textContent = 'Selecione listas...'; return; }
+      const names = checked.map(cb => cb.closest('.ms-option').textContent.trim());
+      trigger.textContent = names.length === 1 ? names[0] : `${names.length} listas selecionadas`;
+    }
+
     async function activateClient(gi) {
       driveActiveCliente = String(gi);
       renderDriveFavChips(getFavClientes());
-      const listSel = document.getElementById('driveListaSelect');
+      const trigger = document.getElementById('driveListaMsTrigger');
+      const dropdown = document.getElementById('driveListaMsDropdown');
       const listWrap = document.getElementById('driveListaSelectWrap');
       document.getElementById('driveCardsCard').style.display = 'none';
       document.getElementById('driveBrowserPanel').style.display = 'none';
-      document.getElementById('driveListaFavBtn').innerHTML = '';
-      listSel.innerHTML = '<option value="">Carregando...</option>';
+      trigger.textContent = 'Carregando...';
+      trigger.classList.remove('open');
+      dropdown.innerHTML = '';
       listWrap.style.display = 'block';
 
       try {
         const c = clientes[+gi];
         const lists = await tFetch(`/boards/${c.boardId}/lists?filter=open`);
-        const fav = loadDriveFav();
-        if (fav.lista && !driveShowAll.lista) {
-          const favList = lists.find(l => l.id === fav.lista);
-          listSel.innerHTML = `<option value="">—</option>` +
-            (favList ? `<option value="${favList.id}">⭐ ${favList.name}</option>` : '') +
-            `<option value="__all_lists__">Ver todas as listas ▸</option>`;
-          if (favList) {
-            listSel.value = favList.id;
-            document.getElementById('driveListaFavBtn').innerHTML = favBtn('lista', favList.id);
-            onDriveListaSelectChange();
-          }
-        } else {
-          listSel.innerHTML = '<option value="">Selecione uma lista...</option>' +
-            lists.map(l => `<option value="${l.id}">${fav.lista===l.id?'⭐ ':''}${l.name}</option>`).join('');
-          if (fav.lista && lists.find(l => l.id === fav.lista)) {
-            listSel.value = fav.lista;
-            document.getElementById('driveListaFavBtn').innerHTML = favBtn('lista', fav.lista);
-            onDriveListaSelectChange();
-          }
-        }
+        const favListas = getFavListas(gi);
+        dropdown.innerHTML = lists.map(l => {
+          const checked = favListas.includes(l.id) || (favListas.length === 0 && lists.length === 1);
+          return `<label class="ms-option"><input type="checkbox" value="${l.id}" ${checked?'checked':''} onchange="updateListaTrigger()">${l.name}</label>`;
+        }).join('');
+        updateListaTrigger();
+        // Update fav star
+        const favBtn_ = document.getElementById('driveListasFavBtn');
+        favBtn_.textContent = favListas.length > 0 ? '⭐' : '☆';
+        favBtn_.style.opacity = favListas.length > 0 ? '1' : '0.4';
+        // Auto-load cards if there are favorites or only one list
+        if (favListas.length > 0 || lists.length === 1) loadSelectedListsCards();
       } catch (err) {
-        listSel.innerHTML = `<option value="">Erro ao carregar listas</option>`;
+        trigger.textContent = 'Erro ao carregar listas';
       }
     }
 
-    function buildCardHtml(card, ci, autoOpen) {
+    async function loadSelectedListsCards() {
+      closeAllDropdowns();
+      const checked = [...document.querySelectorAll('#driveListaMsDropdown input:checked')];
+      const listIds = checked.map(cb => cb.value);
+      if (!listIds.length) {
+        document.getElementById('driveLinksWrap').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Selecione pelo menos uma lista.</span>';
+        document.getElementById('driveCardsCard').style.display = 'block';
+        return;
+      }
+      document.getElementById('driveBrowserPanel').style.display = 'none';
+      document.getElementById('driveLinksWrap').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Buscando cards...</span>';
+      document.getElementById('driveCardsCard').style.display = 'block';
+      try {
+        const allCards = [];
+        for (const listId of listIds) {
+          const cards = await tFetch(`/lists/${listId}/cards`);
+          allCards.push(...cards);
+        }
+        if (!allCards.length) {
+          document.getElementById('driveLinksWrap').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Nenhum card nas listas selecionadas.</span>';
+          return;
+        }
+        const favCards = getFavCards();
+        allCards.sort((a, b) => (favCards.includes(a.id)?0:1) - (favCards.includes(b.id)?0:1));
+        document.getElementById('driveLinksWrap').innerHTML = allCards.map((card, ci) => buildCardHtml(card, ci)).join('');
+      } catch (err) {
+        document.getElementById('driveLinksWrap').innerHTML = `<span style="color:var(--red);font-size:0.82rem">Erro: ${err.message}</span>`;
+      }
+    }
+
+    function buildCardHtml(card, ci) {
       const desc = (card.desc || '').trim();
       const descHtml = desc
         ? desc.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -1486,63 +1550,33 @@
         : '<span style="color:var(--text3);font-size:0.78rem">Sem descrição</span>';
 
       const safeName = card.name.replace(/&/g,'&amp;').replace(/</g,'&lt;');
-      const fav = loadDriveFav();
-      const isCardFav = fav.card === card.id;
-      const open = autoOpen ? 'block' : 'none';
-      const rot  = autoOpen ? 'rotate(180deg)' : '';
-      return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface);overflow:hidden">
+      const isCardFav = getFavCards().includes(card.id);
+      return `<div style="border:1px solid ${isCardFav?'var(--accent)':'var(--border)'};border-radius:8px;margin-bottom:6px;background:var(--surface);overflow:hidden">
         <div style="display:flex;align-items:center">
           <button onclick="toggleCardDesc(${ci})" style="flex:1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px;background:none;border:none;color:var(--text);font-family:inherit;font-size:0.84rem;font-weight:600;cursor:pointer;text-align:left">
-            <span>${safeName}</span>
-            <svg id="card-chevron-${ci}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;color:var(--text3);transition:transform .2s;transform:${rot}"><path d="m6 9 6 6 6-6"/></svg>
+            <span>${isCardFav?'⭐ ':''}${safeName}</span>
+            <svg id="card-chevron-${ci}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;color:var(--text3);transition:transform .2s"><path d="m6 9 6 6 6-6"/></svg>
           </button>
-          <button onclick="toggleDriveFav('card','${card.id}',this)" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:8px 12px 8px 4px;opacity:${isCardFav?1:0.3};transition:opacity .15s" title="${isCardFav?'Remover favorito':'Salvar card como favorito'}">${isCardFav?'⭐':'☆'}</button>
+          <button onclick="toggleFavCard('${card.id}',this)" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:8px 12px 8px 4px;opacity:${isCardFav?1:0.3};transition:opacity .15s" title="${isCardFav?'Remover favorito':'Favoritar card'}">${isCardFav?'⭐':'☆'}</button>
         </div>
-        <div id="card-desc-${ci}" style="display:${open};padding:10px 14px 12px;font-size:0.8rem;color:var(--text2);line-height:1.8;border-top:1px solid var(--border)">
+        <div id="card-desc-${ci}" style="display:none;padding:10px 14px 12px;font-size:0.8rem;color:var(--text2);line-height:1.8;border-top:1px solid var(--border)">
           ${descHtml}
         </div>
       </div>`;
     }
 
-    async function onDriveListaSelectChange() {
-      const listId = document.getElementById('driveListaSelect').value;
-      if (listId === '__all_lists__') {
-        driveShowAll.lista = true; driveShowAll.card = true;
-        if (driveActiveCliente) activateClient(driveActiveCliente); return;
+    function toggleFavCard(cardId, btn) {
+      const fav = loadDriveFav();
+      if (!fav.cards) fav.cards = [];
+      const idx = fav.cards.indexOf(cardId);
+      if (idx >= 0) {
+        fav.cards.splice(idx, 1);
+        if (btn) { btn.textContent = '☆'; btn.style.opacity = '0.3'; btn.title = 'Favoritar card'; }
+      } else {
+        fav.cards.push(cardId);
+        if (btn) { btn.textContent = '⭐'; btn.style.opacity = '1'; btn.title = 'Remover favorito'; }
       }
-      document.getElementById('driveBrowserPanel').style.display = 'none';
-      document.getElementById('driveCardsCard').style.display = 'none';
-      if (!listId) { document.getElementById('driveListaFavBtn').innerHTML = ''; return; }
-      document.getElementById('driveListaFavBtn').innerHTML = favBtn('lista', listId);
-
-      document.getElementById('driveLinksWrap').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Buscando cards...</span>';
-      document.getElementById('driveCardsCard').style.display = 'block';
-
-      try {
-        const cards = await tFetch(`/lists/${listId}/cards`);
-        if (!cards.length) {
-          document.getElementById('driveLinksWrap').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Nenhum card nesta lista.</span>';
-          return;
-        }
-
-        const fav = loadDriveFav();
-        if (fav.card && !driveShowAll.card) {
-          const favCard = cards.find(c => c.id === fav.card);
-          const showAllBtn = `<div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-            <button onclick="driveShowAll.card=true;onDriveListaSelectChange()" style="background:none;border:1px solid var(--border2);color:var(--text2);font-size:0.75rem;padding:4px 10px;border-radius:6px;cursor:pointer">Ver todos os cards ▸</button>
-          </div>`;
-          if (favCard) {
-            document.getElementById('driveLinksWrap').innerHTML = showAllBtn + buildCardHtml(favCard, 0, true);
-          } else {
-            document.getElementById('driveLinksWrap').innerHTML = showAllBtn + '<span style="color:var(--text3);font-size:0.82rem">Card favorito não encontrado nesta lista.</span>';
-          }
-        } else {
-          const html = cards.map((card, ci) => buildCardHtml(card, ci, false)).join('');
-          document.getElementById('driveLinksWrap').innerHTML = html;
-        }
-      } catch (err) {
-        document.getElementById('driveLinksWrap').innerHTML = `<span style="color:var(--red);font-size:0.82rem">Erro: ${err.message}</span>`;
-      }
+      saveDriveFav(fav);
     }
 
     function toggleCardDesc(ci) {
