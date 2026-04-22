@@ -1365,46 +1365,161 @@
       return links;
     }
 
+    // Cache de nomes de pastas { folderId: name }
+    const driveFolderNameCache = {};
+    // Estado do navegador por slot { si: { stack: [{id,name}] } }
+    const slotBrowserState = {};
+
     function renderDriveSlots() {
       const slots = getSlots();
       const wrap = document.getElementById('driveSlotsWrap');
       if (!slots.length) {
         wrap.innerHTML = `<div style="padding:24px;text-align:center;color:var(--text3);font-size:0.85rem">
-          Nenhum favorito. Clique em <strong>+ Adicionar</strong> para criar seu primeiro.
+          Nenhum cliente. Clique em <strong>+ Adicionar</strong> para criar o primeiro.
         </div>`;
         return;
       }
       wrap.innerHTML = slots.map((slot, si) => {
         const links = extractDriveLinks(slot.cardDesc || '');
         const linksHtml = links.length
-          ? links.map(l => `
-            <a href="#" onclick="selecionarDriveLink('${l.folderId}','',event)"
-               style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;background:var(--accent-dim);border:1px solid rgba(99,102,241,0.2);font-size:0.78rem;color:var(--accent);text-decoration:none;font-weight:500;margin-top:8px;margin-right:4px">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-              Selecionar pasta
-            </a>`).join('')
+          ? links.map(l => {
+              const name = driveFolderNameCache[l.folderId];
+              const label = name ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> ${name}` : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> Carregando...`;
+              return `<button onclick="openSlotBrowser(${si},'${l.folderId}',event)"
+                style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;background:var(--accent-dim);border:1px solid rgba(99,102,241,0.2);font-size:0.78rem;color:var(--accent);font-weight:500;margin-top:8px;margin-right:4px;cursor:pointer;background:none;border:1px solid rgba(99,102,241,0.25);background:var(--accent-dim)">
+                ${label}
+              </button>`;
+            }).join('')
           : `<span style="font-size:0.75rem;color:var(--text3);margin-top:6px;display:block">Nenhum link de Drive na descrição</span>`;
-        return `<div class="card" style="margin-bottom:8px;padding:12px 14px">
-          <div style="display:flex;align-items:flex-start;gap:8px">
-            <div style="flex:1;min-width:0">
-              <div style="display:flex;flex-direction:column;gap:2px;margin-bottom:4px">
-                <span style="font-size:0.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;font-weight:600">Board</span>
-                <span style="font-size:0.82rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${slot.boardName || '—'}</span>
+        return `<div class="card" style="margin-bottom:8px;padding:0;overflow:hidden">
+          <div style="padding:12px 14px">
+            <div style="display:flex;align-items:flex-start;gap:8px">
+              <div style="flex:1;min-width:0">
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+                  <div>
+                    <span style="font-size:0.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;font-weight:600;display:block;margin-bottom:2px">Board</span>
+                    <span style="font-size:0.8rem;font-weight:600;color:var(--text);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${slot.boardName || '—'}</span>
+                  </div>
+                  <div>
+                    <span style="font-size:0.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;font-weight:600;display:block;margin-bottom:2px">Lista</span>
+                    <span style="font-size:0.8rem;color:var(--text2);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${slot.listName || '—'}</span>
+                  </div>
+                  <div>
+                    <span style="font-size:0.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;font-weight:600;display:block;margin-bottom:2px">Card</span>
+                    <span style="font-size:0.8rem;color:var(--text2);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${slot.cardName || '—'}</span>
+                  </div>
+                </div>
+                <div>${linksHtml}</div>
               </div>
-              <div style="display:flex;flex-direction:column;gap:2px;margin-bottom:4px">
-                <span style="font-size:0.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;font-weight:600">Lista</span>
-                <span style="font-size:0.82rem;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${slot.listName || '—'}</span>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:2px">
-                <span style="font-size:0.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;font-weight:600">Card</span>
-                <span style="font-size:0.82rem;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${slot.cardName || '—'}</span>
-              </div>
-              <div>${linksHtml}</div>
+              <button onclick="removeSlot(${si})" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);flex-shrink:0;font-size:1.1rem;line-height:1;margin-top:-2px" title="Remover">×</button>
             </div>
-            <button onclick="removeSlot(${si})" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);flex-shrink:0;font-size:1.1rem;line-height:1;margin-top:-2px" title="Remover">×</button>
+          </div>
+          <!-- Navegador inline -->
+          <div id="slot-browser-${si}" style="display:none;border-top:1px solid var(--border);padding:12px 14px;background:var(--surface2)">
+            <div id="slot-breadcrumb-${si}" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:10px;font-size:0.75rem"></div>
+            <div id="slot-subfolders-${si}" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+              <span style="color:var(--text3);font-size:0.82rem">Carregando...</span>
+            </div>
+            <div style="display:flex;gap:6px">
+              <input id="slot-nova-${si}" type="text" placeholder="Nome da nova pasta" style="flex:1;font-size:0.82rem">
+              <button class="btn btn-ghost btn-sm" onclick="criarPastaSlot(${si})">Criar</button>
+            </div>
           </div>
         </div>`;
       }).join('');
+      loadSlotFolderNames();
+    }
+
+    async function loadSlotFolderNames() {
+      const slots = getSlots();
+      const toLoad = new Set();
+      slots.forEach(s => extractDriveLinks(s.cardDesc || '').forEach(l => {
+        if (!driveFolderNameCache[l.folderId]) toLoad.add(l.folderId);
+      }));
+      if (!toLoad.size) return;
+      await Promise.all([...toLoad].map(async fid => {
+        try {
+          const info = await driveApi(`/folder-info?folderId=${fid}`);
+          driveFolderNameCache[fid] = info.name;
+        } catch { driveFolderNameCache[fid] = fid; }
+      }));
+      renderDriveSlots();
+    }
+
+    async function openSlotBrowser(si, folderId, e) {
+      if (e) e.preventDefault();
+      const browser = document.getElementById(`slot-browser-${si}`);
+      // Se já está aberto no mesmo folder, apenas fecha
+      const state = slotBrowserState[si];
+      if (browser.style.display !== 'none' && state?.stack[0]?.id === folderId) {
+        browser.style.display = 'none';
+        return;
+      }
+      const name = driveFolderNameCache[folderId] || folderId;
+      slotBrowserState[si] = { stack: [{ id: folderId, name }] };
+      browser.style.display = 'block';
+      renderSlotBrowser(si);
+      await loadSlotSubfolders(si);
+    }
+
+    function renderSlotBrowser(si) {
+      const { stack } = slotBrowserState[si];
+      const bc = document.getElementById(`slot-breadcrumb-${si}`);
+      bc.innerHTML = stack.map((f, i) => {
+        const isLast = i === stack.length - 1;
+        return isLast
+          ? `<span style="color:var(--text);font-weight:600">${f.name}</span>`
+          : `<button onclick="slotBrowserGoTo(${si},${i})" style="background:none;border:none;cursor:pointer;color:var(--accent);padding:0;font-size:0.75rem">${f.name}</button>
+             <span style="color:var(--text3)">/</span>`;
+      }).join('');
+    }
+
+    async function loadSlotSubfolders(si) {
+      const { stack } = slotBrowserState[si];
+      const folderId = stack[stack.length - 1].id;
+      const wrap = document.getElementById(`slot-subfolders-${si}`);
+      wrap.innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Carregando...</span>';
+      try {
+        const folders = await driveApi(`/folders?folderId=${folderId}`);
+        wrap.innerHTML = folders.length
+          ? folders.map(f => `
+              <button onclick="slotBrowserNavigate(${si},'${f.id}',\`${f.name.replace(/`/g,'\\`')}\`)"
+                style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--surface);font-size:0.78rem;cursor:pointer;color:var(--text2)">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                ${f.name}
+              </button>`).join('')
+          : '<span style="color:var(--text3);font-size:0.82rem">Nenhuma subpasta</span>';
+      } catch (err) {
+        wrap.innerHTML = `<span style="color:var(--red);font-size:0.82rem">Erro: ${err.message}</span>`;
+      }
+    }
+
+    async function slotBrowserNavigate(si, folderId, name) {
+      slotBrowserState[si].stack.push({ id: folderId, name });
+      renderSlotBrowser(si);
+      await loadSlotSubfolders(si);
+    }
+
+    async function slotBrowserGoTo(si, stackIndex) {
+      slotBrowserState[si].stack = slotBrowserState[si].stack.slice(0, stackIndex + 1);
+      renderSlotBrowser(si);
+      await loadSlotSubfolders(si);
+    }
+
+    async function criarPastaSlot(si) {
+      const input = document.getElementById(`slot-nova-${si}`);
+      const nome = input.value.trim();
+      if (!nome) return;
+      const { stack } = slotBrowserState[si];
+      const parentId = stack[stack.length - 1].id;
+      input.disabled = true;
+      try {
+        await driveApi('/folders', { method: 'POST', body: JSON.stringify({ parentId, names: [nome] }) });
+        input.value = '';
+        await loadSlotSubfolders(si);
+      } catch (err) {
+        alert('Erro ao criar pasta: ' + err.message);
+      } finally { input.disabled = false; }
     }
 
     function removeSlot(si) {
