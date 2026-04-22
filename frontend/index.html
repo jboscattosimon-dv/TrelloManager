@@ -694,13 +694,19 @@
           <div class="card" style="margin-bottom:16px">
             <div class="row-2">
               <div class="form-group" style="margin:0">
-                <label class="form-label">Cliente</label>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+                  <label class="form-label" style="margin:0">Cliente</label>
+                  <span id="driveClienteFavBtn"></span>
+                </div>
                 <select id="driveCliente" onchange="onDriveClienteChange()">
                   <option value="">Selecione...</option>
                 </select>
               </div>
-              <div class="form-group" style="margin:0" id="driveListaSelectWrap" style="display:none">
-                <label class="form-label">Lista</label>
+              <div class="form-group" style="margin:0" id="driveListaSelectWrap">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+                  <label class="form-label" style="margin:0">Lista</label>
+                  <span id="driveListaFavBtn"></span>
+                </div>
                 <select id="driveListaSelect" onchange="onDriveListaSelectChange()" disabled>
                   <option value="">Selecione uma lista...</option>
                 </select>
@@ -823,20 +829,22 @@
           </button>
         </div>
 
-        <div class="filter-row">
-          <button class="filter-pill active" id="filtroAtivos" onclick="setFiltro('ativos')">Ativos</button>
-          <button class="filter-pill" id="filtroInativos" onclick="setFiltro('inativos')">Inativos</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="filter-row" style="margin:0">
+            <button class="filter-pill active" id="filtroAtivos" onclick="setFiltro('ativos')">Ativos</button>
+            <button class="filter-pill" id="filtroInativos" onclick="setFiltro('inativos')">Inativos</button>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="salvarConfig()">Salvar</button>
         </div>
 
         <div class="card" style="padding:0;overflow:hidden">
           <div id="configTable" style="padding:16px;color:var(--text3);font-size:0.85rem">Carregando boards...</div>
         </div>
 
-      </div>
+        <div style="margin-top:16px;display:none" id="configSaveBar">
+          <button class="btn btn-primary" onclick="salvarConfig()">Salvar Configurações</button>
+        </div>
 
-      <!-- sticky save bar -->
-      <div style="position:sticky;bottom:0;margin-top:auto;padding:16px 32px;background:linear-gradient(to top,var(--bg) 70%,transparent);display:none" id="configSaveBar">
-        <button class="btn btn-primary" onclick="salvarConfig()">Salvar Configurações</button>
       </div>
 
     </div>
@@ -942,6 +950,7 @@
       document.getElementById('topbarTitle').textContent = PAGE_META[name]?.title || '';
       document.getElementById('topbarSub').textContent = PAGE_META[name]?.sub || '';
       document.getElementById('configSaveBar').style.display = name === 'config' ? 'block' : 'none';
+
       if (name === 'config') renderConfig();
     }
 
@@ -1046,6 +1055,8 @@
       return [];
     }
 
+    const chipSelected = new Set();
+
     function renderClienteCheckboxes() {
       const comLista = clientes.filter(c => c.ativo && getListIds(c).length > 0);
       const el = document.getElementById('clienteCheckboxes');
@@ -1053,18 +1064,22 @@
         el.innerHTML = '<span style="color:var(--text3);font-size:0.85rem">Nenhum cliente ativo com lista configurada.</span>';
         return;
       }
+      // inicializa todos como selecionados se Set vazio
+      comLista.forEach(c => { const gi = clientes.indexOf(c); chipSelected.add(gi); });
       el.innerHTML = comLista.map(c => {
         const gi = clientes.indexOf(c);
-        return `<label class="chip selected" id="chip-${gi}" onclick="toggleChip(${gi},this)">
-          <input type="checkbox" checked data-idx="${gi}">
+        const sel = chipSelected.has(gi);
+        return `<div class="chip${sel?' selected':''}" id="chip-${gi}" onclick="toggleChip(${gi})">
           <span class="chip-dot"></span>${c.nome}
-        </label>`;
+        </div>`;
       }).join('');
     }
 
-    function toggleChip(gi, el) {
-      el.classList.toggle('selected');
-      el.querySelector('input').checked = el.classList.contains('selected');
+    function toggleChip(gi) {
+      if (chipSelected.has(gi)) chipSelected.delete(gi);
+      else chipSelected.add(gi);
+      const el = document.getElementById(`chip-${gi}`);
+      if (el) el.classList.toggle('selected', chipSelected.has(gi));
     }
 
     async function criarCards() {
@@ -1072,8 +1087,7 @@
       const fim = document.getElementById('dataFim').value;
       if (!inicio || !fim) return alert('Selecione as datas');
 
-      const selecionados = [...document.querySelectorAll('#clienteCheckboxes input:checked')]
-        .map(cb => clientes[+cb.dataset.idx]).filter(Boolean);
+      const selecionados = [...chipSelected].map(gi => clientes[gi]).filter(Boolean);
       if (!selecionados.length) return alert('Selecione ao menos um cliente');
 
       const logEl = document.getElementById('log');
@@ -1286,12 +1300,36 @@
       checkDriveStatus();
     }
 
+    // ── Drive Favorites ───────────────────────────────────
+    const DRIVE_FAV_KEY = 'tm_drive_fav';
+    function loadDriveFav() { try { return JSON.parse(localStorage.getItem(DRIVE_FAV_KEY)) || {}; } catch { return {}; } }
+    function saveDriveFav(fav) { localStorage.setItem(DRIVE_FAV_KEY, JSON.stringify(fav)); }
+
+    function favBtn(type, id, title='') {
+      const fav = loadDriveFav();
+      const isFav = fav[type] === id;
+      return `<button onclick="toggleDriveFav('${type}','${id}',this)" title="${isFav?'Remover favorito':'Salvar como favorito'}"
+        style="background:none;border:none;cursor:pointer;font-size:1rem;line-height:1;padding:2px 4px;opacity:${isFav?1:0.35};transition:opacity .15s;flex-shrink:0">${isFav?'⭐':'☆'}</button>`;
+    }
+
+    function toggleDriveFav(type, id, btn) {
+      const fav = loadDriveFav();
+      if (fav[type] === id) { delete fav[type]; btn.textContent='☆'; btn.style.opacity='0.35'; btn.title='Salvar como favorito'; }
+      else { fav[type] = id; btn.textContent='⭐'; btn.style.opacity='1'; btn.title='Remover favorito'; }
+      saveDriveFav(fav);
+    }
+
     function populateDriveClientes() {
       const sel = document.getElementById('driveCliente');
+      const fav = loadDriveFav();
       sel.innerHTML = '<option value="">Selecione...</option>';
-      clientes.filter(c => c.ativo).forEach((c, i) => {
-        sel.innerHTML += `<option value="${clientes.indexOf(c)}">${c.nome}</option>`;
+      clientes.filter(c => c.ativo).forEach(c => {
+        const gi = clientes.indexOf(c);
+        const star = fav.cliente === String(gi) ? '⭐ ' : '';
+        sel.innerHTML += `<option value="${gi}">${star}${c.nome}</option>`;
       });
+      if (fav.cliente) sel.value = fav.cliente;
+      if (sel.value) onDriveClienteChange();
     }
 
     async function onDriveClienteChange() {
@@ -1299,19 +1337,27 @@
       const listSel = document.getElementById('driveListaSelect');
       document.getElementById('driveCardsCard').style.display = 'none';
       document.getElementById('driveBrowserPanel').style.display = 'none';
+      document.getElementById('driveListaFavBtn').innerHTML = '';
       listSel.innerHTML = '<option value="">Selecione uma lista...</option>';
       listSel.disabled = true;
-      if (!gi) { document.getElementById('driveListaSelectWrap').style.display = 'none'; return; }
+      if (!gi) { document.getElementById('driveListaSelectWrap').style.display = 'none'; document.getElementById('driveClienteFavBtn').innerHTML = ''; return; }
 
+      document.getElementById('driveClienteFavBtn').innerHTML = favBtn('cliente', gi);
       document.getElementById('driveListaSelectWrap').style.display = 'block';
       listSel.innerHTML = '<option value="">Carregando...</option>';
 
       try {
         const c = clientes[+gi];
         const lists = await tFetch(`/boards/${c.boardId}/lists?filter=open`);
+        const fav = loadDriveFav();
         listSel.innerHTML = '<option value="">Selecione uma lista...</option>' +
-          lists.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+          lists.map(l => `<option value="${l.id}">${fav.lista===l.id?'⭐ ':''}${l.name}</option>`).join('');
         listSel.disabled = false;
+        if (fav.lista && lists.find(l => l.id === fav.lista)) {
+          listSel.value = fav.lista;
+          document.getElementById('driveListaFavBtn').innerHTML = favBtn('lista', fav.lista);
+          onDriveListaSelectChange();
+        }
       } catch (err) {
         listSel.innerHTML = `<option value="">Erro ao carregar listas</option>`;
       }
@@ -1321,7 +1367,8 @@
       const listId = document.getElementById('driveListaSelect').value;
       document.getElementById('driveBrowserPanel').style.display = 'none';
       document.getElementById('driveCardsCard').style.display = 'none';
-      if (!listId) return;
+      if (!listId) { document.getElementById('driveListaFavBtn').innerHTML = ''; return; }
+      document.getElementById('driveListaFavBtn').innerHTML = favBtn('lista', listId);
 
       document.getElementById('driveLinksWrap').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Buscando cards...</span>';
       document.getElementById('driveCardsCard').style.display = 'block';
@@ -1355,15 +1402,20 @@
             : '<span style="color:var(--text3);font-size:0.78rem">Sem descrição</span>';
 
           const safeName = card.name.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+          const fav = loadDriveFav();
+          const isCardFav = fav.card === card.id;
           return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface);overflow:hidden">
-            <button onclick="toggleCardDesc(${ci})" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px;background:none;border:none;color:var(--text);font-family:inherit;font-size:0.84rem;font-weight:600;cursor:pointer;text-align:left">
-              <span>${safeName}</span>
-              <svg id="card-chevron-${ci}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;color:var(--text3);transition:transform .2s"><path d="m6 9 6 6 6-6"/></svg>
-            </button>
+            <div style="display:flex;align-items:center">
+              <button onclick="toggleCardDesc(${ci})" style="flex:1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px;background:none;border:none;color:var(--text);font-family:inherit;font-size:0.84rem;font-weight:600;cursor:pointer;text-align:left">
+                <span>${safeName}</span>
+                <svg id="card-chevron-${ci}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;color:var(--text3);transition:transform .2s"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <button onclick="toggleDriveFav('card','${card.id}',this)" style="background:none;border:none;cursor:pointer;font-size:1rem;padding:8px 12px 8px 4px;opacity:${isCardFav?1:0.3};transition:opacity .15s" title="${isCardFav?'Remover favorito':'Salvar card como favorito'}">${isCardFav?'⭐':'☆'}</button>
+            </div>
             <div id="card-desc-${ci}" style="display:none;padding:10px 14px 12px;font-size:0.8rem;color:var(--text2);line-height:1.8;border-top:1px solid var(--border)">
               ${descHtml}
             </div>
-          </div>`;
+          </div>`; // outer div
         }).join('');
 
         document.getElementById('driveLinksWrap').innerHTML = html;
