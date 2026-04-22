@@ -908,6 +908,7 @@
       document.getElementById('userAvatar').textContent = (tmUser.name || 'U')[0].toUpperCase();
       if (tmUser.role === 'admin') document.getElementById('adminLink').style.display = '';
 
+      await loadUserData();
       await sincronizarBoards();
       renderClienteCheckboxes();
       populateClienteSubir();
@@ -954,14 +955,35 @@
       if (name === 'config') renderConfig();
     }
 
-    // ── Storage ───────────────────────────────────────────
-    const STORAGE_KEY = 'tm_clientes_v3';
-    function loadClientes() {
-      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-      catch { return []; }
+    // ── API helper (autenticado) ──────────────────────────
+    async function apiFetch(path, opts = {}) {
+      const res = await fetch(path, {
+        ...opts,
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...(opts.headers || {}) }
+      });
+      if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
+      return res.json();
     }
-    function saveClientes(cs) { localStorage.setItem(STORAGE_KEY, JSON.stringify(cs)); }
-    let clientes = loadClientes();
+
+    // ── Dados do usuário (server-side) ────────────────────
+    let clientes = [];
+    let driveFav = {};
+
+    async function loadUserData() {
+      try {
+        const data = await apiFetch('/api/userdata');
+        clientes = Array.isArray(data.clientes) ? data.clientes : [];
+        driveFav = data.drive_fav || {};
+      } catch {
+        clientes = [];
+        driveFav = {};
+      }
+    }
+
+    function saveClientes(cs) {
+      clientes = cs;
+      apiFetch('/api/userdata', { method: 'PATCH', body: JSON.stringify({ clientes: cs }) }).catch(() => {});
+    }
 
     // ── Trello helpers ────────────────────────────────────
     const TRELLO = 'https://api.trello.com/1';
@@ -1301,9 +1323,11 @@
     }
 
     // ── Drive Favorites ───────────────────────────────────
-    const DRIVE_FAV_KEY = 'tm_drive_fav';
-    function loadDriveFav() { try { return JSON.parse(localStorage.getItem(DRIVE_FAV_KEY)) || {}; } catch { return {}; } }
-    function saveDriveFav(fav) { localStorage.setItem(DRIVE_FAV_KEY, JSON.stringify(fav)); }
+    function loadDriveFav() { return { ...driveFav }; }
+    function saveDriveFav(fav) {
+      driveFav = fav;
+      apiFetch('/api/userdata', { method: 'PATCH', body: JSON.stringify({ drive_fav: fav }) }).catch(() => {});
+    }
 
     const driveShowAll = { lista: false, card: false };
     let driveActiveCliente = null;
