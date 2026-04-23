@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de Privacidade — Trello Manager</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f9f9fb;
+      color: #1a1a2e;
+      line-height: 1.7;
+      padding: 40px 20px 80px;
+    }
+    .wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 12px;
+      padding: 48px 52px;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.07);
+    }
+    h1 { font-size: 1.7rem; font-weight: 800; margin-bottom: 6px; color: #0f0f1a; }
+    .meta { font-size: 0.85rem; color: #888; margin-bottom: 36px; }
+    h2 { font-size: 1.05rem; font-weight: 700; margin: 32px 0 10px; color: #0f0f1a; }
+    p { font-size: 0.92rem; color: #444; margin-bottom: 12px; }
+    ul { padding-left: 20px; margin-bottom: 12px; }
+    ul li { font-size: 0.92rem; color: #444; margin-bottom: 6px; }
+    a { color: #38bdf8; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .divider { border: none; border-top: 1px solid #eee; margin: 32px 0; }
+    @media (max-width: 600px) {
+      .wrap { padding: 28px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Política de Privacidade</h1>
+    <div class="meta">Trello Manager &nbsp;·&nbsp; Última atualização: abril de 2026</div>
+
+    <p>
+      Esta Política de Privacidade descreve como o <strong>Trello Manager</strong> coleta,
+      usa e protege as informações dos usuários ao utilizar o aplicativo e suas integrações
+      com serviços de terceiros (Google Drive e Trello).
+    </p>
+
+    <h2>1. Quem somos</h2>
+    <p>
+      O Trello Manager é uma ferramenta interna de gestão de conteúdo que permite criar
+      cards no Trello e organizar pastas no Google Drive de forma automatizada.
+      O acesso ao aplicativo é restrito a usuários autorizados.
+    </p>
+
+    <h2>2. Dados coletados</h2>
+    <p>Coletamos apenas os dados estritamente necessários para o funcionamento do app:</p>
+    <ul>
+      <li><strong>Email e nome</strong> — usados para autenticação e identificação do usuário dentro do app.</li>
+      <li><strong>Token de acesso ao Google Drive</strong> — armazenado de forma segura para permitir a criação e listagem de pastas no Drive do usuário. Nunca lemos, modificamos ou excluímos arquivos além das pastas criadas pelo próprio app.</li>
+      <li><strong>Configurações de clientes e listas do Trello</strong> — armazenadas na conta do usuário para personalizar o uso do app.</li>
+      <li><strong>Histórico de ações</strong> — registrado localmente no navegador (localStorage) apenas para exibição no Dashboard. Não é enviado a nenhum servidor externo.</li>
+    </ul>
+
+    <h2>3. Como usamos os dados</h2>
+    <ul>
+      <li>Autenticar o usuário e proteger o acesso ao app.</li>
+      <li>Criar pastas no Google Drive conforme solicitado pelo usuário.</li>
+      <li>Criar e atualizar cards no Trello conforme solicitado pelo usuário.</li>
+      <li>Salvar preferências e configurações para uso futuro.</li>
+    </ul>
+    <p>Não usamos os dados para fins publicitários, análise de comportamento ou qualquer finalidade além das descritas acima.</p>
+
+    <h2>4. Acesso ao Google Drive</h2>
+    <p>
+      O aplicativo solicita acesso ao Google Drive do usuário exclusivamente para:
+    </p>
+    <ul>
+      <li>Listar pastas existentes para seleção pelo usuário.</li>
+      <li>Criar novas pastas de datas dentro de pastas selecionadas pelo usuário.</li>
+    </ul>
+    <p>
+      O app <strong>não acessa, lê, modifica ou compartilha</strong> nenhum arquivo ou pasta
+      além daquelas explicitamente selecionadas e criadas pelo próprio usuário dentro do app.
+      O token de acesso é armazenado de forma segura e pode ser revogado a qualquer momento
+      pelo usuário, tanto dentro do app quanto nas
+      <a href="https://myaccount.google.com/permissions" target="_blank">configurações da conta Google</a>.
+    </p>
+
+    <h2>5. Compartilhamento de dados</h2>
+    <p>
+      Não vendemos, alugamos nem compartilhamos dados pessoais com terceiros.
+      Os dados são processados pelos seguintes serviços de infraestrutura:
+    </p>
+    <ul>
+      <li><strong>Supabase</strong> — banco de dados seguro onde as configurações e tokens são armazenados.</li>
+      <li><strong>Google APIs</strong> — usadas exclusivamente para as operações de Drive descritas acima.</li>
+      <li><strong>Trello API</strong> — usada exclusivamente para criar e atualizar cards conforme solicitado pelo usuário.</li>
+    </ul>
+
+    <h2>6. Segurança</h2>
+    <p>
+      Os tokens de acesso são armazenados de forma segura no banco de dados e nunca
+      expostos no frontend. A comunicação entre o app e os serviços de terceiros ocorre
+      sempre via HTTPS. O acesso ao aplicativo é protegido por autenticação com senha.
+    </p>
+
+    <h2>7. Retenção de dados</h2>
+    <p>
+      Os dados são mantidos enquanto o usuário tiver uma conta ativa no app.
+      Ao solicitar a exclusão da conta, todos os dados associados — incluindo tokens
+      de acesso ao Google — são permanentemente removidos.
+    </p>
+
+    <h2>8. Direitos do usuário</h2>
+    <p>O usuário pode, a qualquer momento:</p>
+    <ul>
+      <li>Revogar o acesso ao Google Drive dentro do próprio app (perfil → desconectar).</li>
+      <li>Solicitar a exclusão de seus dados entrando em contato pelo email abaixo.</li>
+      <li>Revogar o acesso ao Google diretamente em <a href="https://myaccount.google.com/permissions" target="_blank">myaccount.google.com/permissions</a>.</li>
+    </ul>
+
+    <h2>9. Alterações nesta política</h2>
+    <p>
+      Eventuais atualizações nesta política serão publicadas nesta página com a data de revisão atualizada.
+      O uso continuado do app após alterações implica aceitação da política atualizada.
+    </p>
+
+    <hr class="divider">
+
+    <h2>Contato</h2>
+    <p>
+      Dúvidas sobre esta política ou sobre o uso dos seus dados:<br>
+      <a href="mailto:lauradanielimkt@gmail.com">lauradanielimkt@gmail.com</a>
+    </p>
+  </div>
+</body>
+</html>
