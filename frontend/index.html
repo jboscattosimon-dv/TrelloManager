@@ -351,29 +351,22 @@
     }
 
     /* ── Config table ───────────────────────── */
-    .cfg-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.84rem;
-    }
-    .cfg-table th {
-      background: var(--surface2);
-      color: var(--text3);
-      text-align: left;
-      padding: 10px 14px;
-      font-size: 0.7rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
+    /* ── Config cards ───────────────────────── */
+    .cfg-card {
+      padding: 14px 0;
       border-bottom: 1px solid var(--border);
     }
-    .cfg-table td {
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border);
-      vertical-align: middle;
+    .cfg-card:last-child { border-bottom: none; }
+    .cfg-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
     }
-    .cfg-table tr:last-child td { border-bottom: none; }
-    .cfg-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .cfg-card-name { font-weight: 600; font-size: 0.9rem; color: var(--text); }
+    .cfg-row { display: flex; align-items: flex-start; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+    .cfg-row-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); padding-top: 5px; min-width: 42px; flex-shrink: 0; }
 
     /* ── Filter pills ───────────────────────── */
     .filter-row { display: flex; gap: 6px; margin-bottom: 16px; }
@@ -405,61 +398,24 @@
     .badge-inativo { background: var(--surface2); color: var(--text3); }
 
     /* ── Multi-select dropdown ──────────────── */
-    .ms-wrap { position: relative; min-width: 190px; }
-    .ms-trigger {
-      width: 100%;
-      padding: 7px 28px 7px 11px;
+    /* ── Lista chips (config) ───────────────── */
+    .lista-chip {
+      padding: 4px 10px;
+      border-radius: 20px;
       border: 1px solid var(--border2);
-      border-radius: 8px;
-      background: var(--surface2);
-      color: var(--text);
-      font-size: 0.82rem;
+      background: transparent;
+      color: var(--text3);
+      font-size: 0.75rem;
+      font-weight: 500;
       cursor: pointer;
-      text-align: left;
+      transition: all 0.15s;
+      user-select: none;
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      position: relative;
-      font-family: inherit;
-      transition: border-color 0.15s;
     }
-    .ms-trigger::after {
-      content: '';
-      position: absolute;
-      right: 10px; top: 50%;
-      transform: translateY(-50%);
-      width: 10px; height: 10px;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%238e8e9a' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-      background-repeat: no-repeat; background-size: contain;
-    }
-    .ms-trigger.open { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
-    .ms-dropdown {
-      display: none;
-      position: fixed;
-      background: var(--surface);
-      border: 1px solid var(--border2);
-      border-radius: var(--radius);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-      z-index: 9999;
-      padding: 6px;
-      max-height: 240px;
-      overflow-y: auto;
-    }
-    .ms-dropdown.open { display: block; }
-    .ms-option {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      padding: 7px 10px;
-      border-radius: 6px;
-      font-size: 0.82rem;
-      cursor: pointer;
-      transition: background 0.1s;
-      color: var(--text2);
-    }
-    .ms-option:hover { background: var(--surface2); color: var(--text); }
-    .ms-option input { width: auto; margin: 0; padding: 0; cursor: pointer; accent-color: var(--accent); }
-    .ms-empty { padding: 10px 12px; font-size: 0.8rem; color: var(--text3); }
+    .lista-chip.on { background: var(--accent-dim); border-color: var(--accent); color: var(--accent-hover); font-weight: 600; }
+    .lista-chip:hover { border-color: var(--text3); color: var(--text2); }
+    .lista-chip.on:hover { border-color: var(--accent-hover); }
+    .lista-empty { font-size: 0.78rem; color: var(--text3); padding: 4px 2px; }
 
     /* ── Day checkboxes ─────────────────────── */
     .day-grid { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -2019,85 +1975,46 @@
       const el = document.getElementById('configTable');
       if (!lista.length) { el.innerHTML = `<p style="padding:4px;color:var(--text3);font-size:0.85rem">Nenhum cliente ${filtroAtual}.</p>`; return; }
 
-      const rows = lista.map(c => {
+      el.innerHTML = lista.map(c => {
         const gi = clientes.indexOf(c);
         const ids = getListIds(c);
-        const nListas = (c.listas||[]).length;
-        const label = ids.length === 0 ? 'Selecione listas...'
-          : ids.length === 1 ? ((c.listas||[]).find(l => l.id === ids[0])?.name || '1 lista')
-          : `${ids.length} listas selecionadas`;
-        const msOpts = nListas
-          ? c.listas.map(l => `<label class="ms-option"><input type="checkbox" ${ids.includes(l.id)?'checked':''} onchange="toggleLista(${gi},'${l.id}',this.checked,this.closest('.ms-wrap'))">${l.name}</label>`).join('')
-          : `<div class="ms-empty">Clique em ↻ para carregar</div>`;
+        const listasHtml = (c.listas||[]).length
+          ? (c.listas||[]).map(l => `<span class="lista-chip ${ids.includes(l.id)?'on':''}" onclick="toggleListaChip(${gi},'${l.id}',this)">${l.name}</span>`).join('')
+          : `<span class="lista-empty">Nenhuma lista — clique ↻ para carregar</span>`;
         const diasHtml = [1,2,3,4,5,6,0].map(d =>
           `<span class="day-chip ${(c.diasSemana||[1,2,3,4,5]).includes(d)?'on':''}" onclick="toggleDiaChip(${gi},${d},this)">${DIAS_LABELS[d]}</span>`).join('');
-        return `<tr>
-          <td style="font-weight:600;color:var(--text)">${c.nome}</td>
-          <td>
-            <div style="display:flex;gap:6px;align-items:center">
-              <div class="ms-wrap">
-                <button class="ms-trigger" onclick="toggleDropdown(this)">${label}</button>
-                <div class="ms-dropdown">${msOpts}</div>
-              </div>
-              <button class="btn btn-ghost btn-sm" onclick="fetchListasCliente(${gi})">↻</button>
-            </div>
-          </td>
-          <td><div class="day-grid">${diasHtml}</div></td>
-          <td>
+        return `<div class="cfg-card">
+          <div class="cfg-card-header">
+            <span class="cfg-card-name">${c.nome}</span>
             <div style="display:flex;gap:6px;align-items:center">
               <span class="badge ${c.ativo?'badge-ativo':'badge-inativo'}">${c.ativo?'● Ativo':'○ Inativo'}</span>
               <button class="btn btn-ghost btn-sm" onclick="toggleAtivo(${gi})">${c.ativo?'Desativar':'Ativar'}</button>
             </div>
-          </td>
-        </tr>`;
+          </div>
+          <div class="cfg-row">
+            <span class="cfg-row-label">Listas</span>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;flex:1;align-items:center">
+              ${listasHtml}
+              <button class="btn btn-ghost btn-sm" style="padding:3px 8px;font-size:0.72rem" onclick="fetchListasCliente(${gi})" title="Recarregar listas">↻</button>
+            </div>
+          </div>
+          <div class="cfg-row">
+            <span class="cfg-row-label">Dias</span>
+            <div class="day-grid">${diasHtml}</div>
+          </div>
+        </div>`;
       }).join('');
-
-      el.innerHTML = `<table class="cfg-table">
-        <thead><tr><th>Cliente</th><th>Listas</th><th>Dias da semana</th><th>Status</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>`;
     }
 
-    // ── Dropdown ──────────────────────────────────────────
-    function toggleDropdown(btn) {
-      const wrap = btn.closest('.ms-wrap');
-      const drop = wrap.querySelector('.ms-dropdown');
-      const isOpen = drop.classList.contains('open');
-      document.querySelectorAll('.ms-dropdown.open').forEach(d => {
-        d.classList.remove('open'); d.previousElementSibling.classList.remove('open');
-      });
-      if (!isOpen) {
-        const rect = btn.getBoundingClientRect();
-        const dropH = 240;
-        const spaceBelow = window.innerHeight - rect.bottom - 8;
-        const top = spaceBelow >= dropH ? rect.bottom + 4 : Math.max(8, rect.top - dropH - 4);
-        drop.style.top = top + 'px';
-        drop.style.left = rect.left + 'px';
-        drop.style.minWidth = rect.width + 'px';
-        drop.classList.add('open'); btn.classList.add('open');
-      }
-    }
-
-    function closeAllDropdowns() {
-      document.querySelectorAll('.ms-dropdown.open').forEach(d => {
-        d.classList.remove('open'); d.previousElementSibling.classList.remove('open');
-      });
-    }
-    document.addEventListener('click', e => { if (!e.target.closest('.ms-wrap')) closeAllDropdowns(); });
-    document.addEventListener('DOMContentLoaded', () => {
-      document.querySelector('.content')?.addEventListener('scroll', closeAllDropdowns);
-    });
-
-    function toggleLista(gi, lid, checked, wrap) {
+    function toggleListaChip(gi, lid, el) {
       if (!clientes[gi].listIds) clientes[gi].listIds = [];
-      if (checked && !clientes[gi].listIds.includes(lid)) clientes[gi].listIds.push(lid);
-      if (!checked) clientes[gi].listIds = clientes[gi].listIds.filter(id => id !== lid);
-      const ids = clientes[gi].listIds;
-      const c = clientes[gi];
-      const label = ids.length === 0 ? 'Selecione listas...'
-        : ids.length === 1 ? ((c.listas||[]).find(l => l.id === ids[0])?.name || '1 lista')
-        : `${ids.length} listas selecionadas`;
-      wrap.querySelector('.ms-trigger').textContent = label;
+      if (el.classList.contains('on')) {
+        clientes[gi].listIds = clientes[gi].listIds.filter(id => id !== lid);
+        el.classList.remove('on');
+      } else {
+        if (!clientes[gi].listIds.includes(lid)) clientes[gi].listIds.push(lid);
+        el.classList.add('on');
+      }
     }
 
     function toggleDiaChip(gi, dia, el) {
