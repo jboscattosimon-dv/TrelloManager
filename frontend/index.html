@@ -351,22 +351,30 @@
     }
 
     /* ── Config table ───────────────────────── */
-    /* ── Config cards ───────────────────────── */
-    .cfg-card {
-      padding: 14px 0;
+    /* ── Config table ───────────────────────── */
+    .cfg-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+    }
+    .cfg-table th {
+      background: var(--surface2);
+      color: var(--text3);
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
       border-bottom: 1px solid var(--border);
     }
-    .cfg-card:last-child { border-bottom: none; }
-    .cfg-card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 10px;
+    .cfg-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
     }
-    .cfg-card-name { font-weight: 600; font-size: 0.9rem; color: var(--text); }
-    .cfg-row { display: flex; align-items: flex-start; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
-    .cfg-row-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); padding-top: 5px; min-width: 42px; flex-shrink: 0; }
+    .cfg-table tr:last-child td { border-bottom: none; }
+    .cfg-table tr:hover td { background: rgba(255,255,255,0.02); }
 
     /* ── Filter pills ───────────────────────── */
     .filter-row { display: flex; gap: 6px; margin-bottom: 16px; }
@@ -400,22 +408,18 @@
     /* ── Multi-select dropdown ──────────────── */
     /* ── Lista chips (config) ───────────────── */
     .lista-chip {
-      padding: 4px 10px;
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
       border-radius: 20px;
-      border: 1px solid var(--border2);
-      background: transparent;
-      color: var(--text3);
-      font-size: 0.75rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s;
-      user-select: none;
+      border: 1px solid var(--accent);
+      background: var(--accent-dim);
+      color: var(--accent-hover);
+      font-size: 0.73rem;
+      font-weight: 600;
       white-space: nowrap;
     }
-    .lista-chip.on { background: var(--accent-dim); border-color: var(--accent); color: var(--accent-hover); font-weight: 600; }
-    .lista-chip:hover { border-color: var(--text3); color: var(--text2); }
-    .lista-chip.on:hover { border-color: var(--accent-hover); }
-    .lista-empty { font-size: 0.78rem; color: var(--text3); padding: 4px 2px; }
+    .lista-empty { font-size: 0.78rem; color: var(--text3); }
 
     /* ── Day checkboxes ─────────────────────── */
     .day-grid { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -1975,47 +1979,75 @@
       const el = document.getElementById('configTable');
       if (!lista.length) { el.innerHTML = `<p style="padding:4px;color:var(--text3);font-size:0.85rem">Nenhum cliente ${filtroAtual}.</p>`; return; }
 
-      el.innerHTML = lista.map(c => {
+      const rows = lista.map(c => {
         const gi = clientes.indexOf(c);
         const ids = getListIds(c);
-        const listasHtml = (c.listas||[]).length
-          ? (c.listas||[]).map(l => `<span class="lista-chip ${ids.includes(l.id)?'on':''}" onclick="toggleListaChip(${gi},'${l.id}',this)">${l.name}</span>`).join('')
-          : `<span class="lista-empty">Nenhuma lista — clique ↻ para carregar</span>`;
+        const listasHtml = ids.length
+          ? ids.map(id => { const n = (c.listas||[]).find(l => l.id === id)?.name || id; return `<span class="lista-chip">${n}</span>`; }).join('')
+          : `<span class="lista-empty">Nenhuma</span>`;
         const diasHtml = [1,2,3,4,5,6,0].map(d =>
           `<span class="day-chip ${(c.diasSemana||[1,2,3,4,5]).includes(d)?'on':''}" onclick="toggleDiaChip(${gi},${d},this)">${DIAS_LABELS[d]}</span>`).join('');
-        return `<div class="cfg-card">
-          <div class="cfg-card-header">
-            <span class="cfg-card-name">${c.nome}</span>
+        return `<tr>
+          <td style="font-weight:600;color:var(--text)">${c.nome}</td>
+          <td>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">
+              ${listasHtml}
+              <button class="btn btn-ghost btn-sm" style="margin-left:2px" onclick="openListasModal(${gi})">Editar</button>
+              <button class="btn btn-ghost btn-sm" onclick="fetchListasCliente(${gi})" title="Recarregar listas">↻</button>
+            </div>
+          </td>
+          <td><div class="day-grid">${diasHtml}</div></td>
+          <td>
             <div style="display:flex;gap:6px;align-items:center">
               <span class="badge ${c.ativo?'badge-ativo':'badge-inativo'}">${c.ativo?'● Ativo':'○ Inativo'}</span>
               <button class="btn btn-ghost btn-sm" onclick="toggleAtivo(${gi})">${c.ativo?'Desativar':'Ativar'}</button>
             </div>
-          </div>
-          <div class="cfg-row">
-            <span class="cfg-row-label">Listas</span>
-            <div style="display:flex;flex-wrap:wrap;gap:6px;flex:1;align-items:center">
-              ${listasHtml}
-              <button class="btn btn-ghost btn-sm" style="padding:3px 8px;font-size:0.72rem" onclick="fetchListasCliente(${gi})" title="Recarregar listas">↻</button>
-            </div>
-          </div>
-          <div class="cfg-row">
-            <span class="cfg-row-label">Dias</span>
-            <div class="day-grid">${diasHtml}</div>
-          </div>
-        </div>`;
+          </td>
+        </tr>`;
       }).join('');
+
+      el.innerHTML = `<table class="cfg-table">
+        <thead><tr><th>Cliente</th><th>Listas</th><th>Dias da semana</th><th>Status</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
     }
 
-    function toggleListaChip(gi, lid, el) {
-      if (!clientes[gi].listIds) clientes[gi].listIds = [];
-      if (el.classList.contains('on')) {
-        clientes[gi].listIds = clientes[gi].listIds.filter(id => id !== lid);
-        el.classList.remove('on');
+    // ── Modal de listas ───────────────────────────────────
+    let listasModalGi = -1;
+
+    function openListasModal(gi) {
+      listasModalGi = gi;
+      const c = clientes[gi];
+      const ids = getListIds(c);
+      document.getElementById('listasModalTitle').textContent = c.nome;
+      const body = document.getElementById('listasModalBody');
+      if (!(c.listas||[]).length) {
+        body.innerHTML = `<p style="color:var(--text3);font-size:0.85rem">Nenhuma lista carregada. Clique ↻ para sincronizar.</p>`;
       } else {
-        if (!clientes[gi].listIds.includes(lid)) clientes[gi].listIds.push(lid);
-        el.classList.add('on');
+        body.innerHTML = c.listas.map(l => `
+          <label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:0.84rem;color:var(--text2);transition:background 0.1s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+            <input type="checkbox" ${ids.includes(l.id)?'checked':''} onchange="toggleListaModal(${gi},'${l.id}',this.checked)" style="width:auto;margin:0;accent-color:var(--accent);cursor:pointer">
+            ${l.name}
+          </label>`).join('');
       }
+      document.getElementById('listasModal').classList.add('open');
     }
+
+    function closeListasModal() {
+      document.getElementById('listasModal').classList.remove('open');
+      renderConfig();
+    }
+
+    function toggleListaModal(gi, lid, checked) {
+      if (!clientes[gi].listIds) clientes[gi].listIds = [];
+      if (checked && !clientes[gi].listIds.includes(lid)) clientes[gi].listIds.push(lid);
+      if (!checked) clientes[gi].listIds = clientes[gi].listIds.filter(id => id !== lid);
+    }
+
+    document.getElementById('listasModal').addEventListener('click', e => {
+      if (e.target === e.currentTarget) closeListasModal();
+    });
+
 
     function toggleDiaChip(gi, dia, el) {
       const ds = clientes[gi].diasSemana || [];
@@ -2149,6 +2181,20 @@
       showToast('Template excluído', 'info');
     }
   </script>
+
+  <!-- Modal de seleção de listas -->
+  <div class="modal-bg" id="listasModal">
+    <div class="modal-box" style="max-width:380px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <h3 id="listasModalTitle" style="margin:0">Listas</h3>
+        <button class="btn btn-ghost btn-sm" onclick="closeListasModal()">✕</button>
+      </div>
+      <div id="listasModalBody" style="display:flex;flex-direction:column;gap:2px;max-height:360px;overflow-y:auto"></div>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end">
+        <button class="btn btn-primary btn-sm" onclick="closeListasModal()">Confirmar</button>
+      </div>
+    </div>
+  </div>
 
   <div id="toast-wrap"></div>
 
