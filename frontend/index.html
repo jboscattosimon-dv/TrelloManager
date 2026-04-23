@@ -934,11 +934,13 @@
           </button>
         </div>
 
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
           <div class="filter-row" style="margin:0">
             <button class="filter-pill active" id="filtroAtivos" onclick="setFiltro('ativos')">Ativos</button>
             <button class="filter-pill" id="filtroInativos" onclick="setFiltro('inativos')">Inativos</button>
           </div>
+          <input id="filtroNome" type="text" placeholder="Buscar cliente..." oninput="renderConfig()"
+            style="flex:1;min-width:140px;padding:5px 10px;font-size:0.82rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text);outline:none">
           <button class="btn btn-primary btn-sm" onclick="salvarConfig()">Salvar</button>
         </div>
 
@@ -1248,6 +1250,19 @@
       const selecionados = [...chipSelected].map(gi => clientes[gi]).filter(Boolean);
       if (!selecionados.length) return showToast('Selecione ao menos um cliente', 'warn');
 
+      // ── Preview ───────────────────────────────────────────
+      const previewLinhas = [];
+      selecionados.forEach(c => {
+        getListIds(c).forEach(lid => {
+          const nomeLista = (c.listas||[]).find(l => l.id === lid)?.name || lid;
+          const dias = diasNoRange(inicio, fim, c.diasSemana);
+          previewLinhas.push({ cliente: c.nome, lista: nomeLista, total: dias.length });
+        });
+      });
+      const totalCards = previewLinhas.reduce((s, l) => s + l.total, 0);
+      const confirmar = await previewCriarCards(previewLinhas, totalCards);
+      if (!confirmar) return;
+
       const logEl = document.getElementById('log');
       logEl.innerHTML = ''; logEl.style.display = 'block';
       const btn = document.getElementById('btnCriar');
@@ -1288,6 +1303,7 @@
       logMsg(logEl, '<br>Concluído!', 'log-ok');
       btn.disabled = false;
 
+      notifyDone(`${createdCardIds.length} cards criados com sucesso`);
       if (createdCardIds.length) {
         logAction('cards', `${createdCardIds.length} cards criados (${selecionados.map(c=>c.nome).join(', ')})`, { count: createdCardIds.length });
         showToast(`${createdCardIds.length} cards criados`, 'success', 12000, 'Desfazer', async () => {
@@ -1371,20 +1387,56 @@
       const nomeLista = (c.listas||[]).find(l => l.id === listId)?.name || listId;
       logMsg(logEl, `Enviando ${blocos.length} blocos para ${c.nome} — ${nomeLista}...`, 'log-info');
 
+      let substituirTodos = null; // null = perguntar, true = substituir tudo, false = pular tudo
+      let enviados = 0;
+
       for (let i = 0; i < blocos.length; i++) {
         const b = blocos[i];
         try {
           const cards = await tFetch(`/lists/${listId}/cards`);
           const card = cards.find(card => card.name.startsWith(b.data));
-          if (!card) { logMsg(logEl, `  ⚠ ${b.data}: card não encontrado`, 'log-err'); }
-          else { await atualizarCard(card.id, b.desc); logMsg(logEl, `  ✓ ${card.name}`, 'log-ok'); }
+          if (!card) {
+            logMsg(logEl, `  ⚠ ${b.data}: card não encontrado`, 'log-err');
+          } else if (card.desc && card.desc.trim()) {
+            // card já tem descrição — decidir o que fazer
+            if (substituirTodos === true) {
+              await atualizarCard(card.id, b.desc);
+              logMsg(logEl, `  ✓ ${card.name} (substituído)`, 'log-ok');
+              enviados++;
+            } else if (substituirTodos === false) {
+              logMsg(logEl, `  ↷ ${card.name} — pulado (já tem conteúdo)`, 'log-info');
+            } else {
+              // perguntar individualmente
+              const escolha = await confirmCardExistente(card.name);
+              if (escolha === 'substituir') {
+                await atualizarCard(card.id, b.desc);
+                logMsg(logEl, `  ✓ ${card.name} (substituído)`, 'log-ok');
+                enviados++;
+              } else if (escolha === 'todos') {
+                substituirTodos = true;
+                await atualizarCard(card.id, b.desc);
+                logMsg(logEl, `  ✓ ${card.name} (substituído)`, 'log-ok');
+                enviados++;
+              } else if (escolha === 'nenhum') {
+                substituirTodos = false;
+                logMsg(logEl, `  ↷ ${card.name} — pulado`, 'log-info');
+              } else {
+                logMsg(logEl, `  ↷ ${card.name} — pulado`, 'log-info');
+              }
+            }
+          } else {
+            await atualizarCard(card.id, b.desc);
+            logMsg(logEl, `  ✓ ${card.name}`, 'log-ok');
+            enviados++;
+          }
         } catch (err) { logMsg(logEl, `  ✗ ${b.data}: ${err.message}`, 'log-err'); }
         pb.style.width = `${Math.round((i+1)/blocos.length*100)}%`;
         await new Promise(r => setTimeout(r, 200));
       }
       logMsg(logEl, '<br>Concluído!', 'log-ok');
       btn.disabled = false;
-      logAction('subir', `Upload para ${c.nome} — ${nomeLista} (${blocos.length} blocos)`, { count: blocos.length });
+      logAction('subir', `Upload para ${c.nome} — ${nomeLista} (${enviados} cards)`, { count: enviados });
+      notifyDone(`Upload concluído — ${enviados} cards atualizados`);
     }
 
     // ── Modal de perfil ───────────────────────────────────
@@ -2028,7 +2080,12 @@
     const DIAS_LABELS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 
     function renderConfig() {
-      const lista = clientes.filter(c => filtroAtual === 'ativos' ? c.ativo : !c.ativo);
+      const busca = (document.getElementById('filtroNome')?.value || '').toLowerCase().trim();
+      const lista = clientes.filter(c => {
+        const statusOk = filtroAtual === 'ativos' ? c.ativo : !c.ativo;
+        const nomeOk = !busca || c.nome.toLowerCase().includes(busca);
+        return statusOk && nomeOk;
+      });
       const el = document.getElementById('configTable');
       if (!lista.length) { el.innerHTML = `<p style="padding:4px;color:var(--text3);font-size:0.85rem">Nenhum cliente ${filtroAtual}.</p>`; return; }
 
@@ -2235,6 +2292,19 @@
     }
   </script>
 
+  <!-- Modal de preview de criação de cards -->
+  <div class="modal-bg" id="previewModal">
+    <div class="modal-box" style="max-width:420px">
+      <h3 style="margin-bottom:4px">Preview — Criar Cards</h3>
+      <p style="font-size:0.8rem;color:var(--text3);margin-bottom:16px">Confirme os cards que serão criados</p>
+      <div id="previewModalBody" style="max-height:340px;overflow-y:auto"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px">
+        <button class="btn btn-ghost btn-sm" id="previewCancel">Cancelar</button>
+        <button class="btn btn-primary btn-sm" id="previewConfirm">Criar agora</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal de seleção de listas -->
   <div class="modal-bg" id="listasModal">
     <div class="modal-box" style="max-width:380px">
@@ -2275,6 +2345,58 @@
       t.classList.add('out');
       setTimeout(() => t.remove(), 260);
     }
+    // Preview antes de criar cards
+    function previewCriarCards(linhas, total) {
+      return new Promise(resolve => {
+        const body = document.getElementById('previewModalBody');
+        body.innerHTML = linhas.map(l => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:0.83rem">
+            <div>
+              <span style="color:var(--text);font-weight:600">${l.cliente}</span>
+              <span style="color:var(--text3)"> — ${l.lista}</span>
+            </div>
+            <span style="color:var(--accent);font-weight:700">${l.total} cards</span>
+          </div>`).join('') +
+          `<div style="margin-top:12px;font-size:0.82rem;color:var(--text3)">Total: <strong style="color:var(--text)">${total} cards</strong></div>`;
+        const modal = document.getElementById('previewModal');
+        modal.classList.add('open');
+        document.getElementById('previewConfirm').onclick = () => { modal.classList.remove('open'); resolve(true); };
+        document.getElementById('previewCancel').onclick  = () => { modal.classList.remove('open'); resolve(false); };
+      });
+    }
+
+    // Confirmação específica para card com conteúdo existente
+    function confirmCardExistente(cardName) {
+      return new Promise(resolve => {
+        const t = showToast(`<strong>${cardName}</strong> já tem descrição. O que fazer?`, 'warn', 0);
+        const btns = document.createElement('div');
+        btns.style.cssText = 'display:flex;gap:6px;margin-top:10px;flex-wrap:wrap';
+        btns.innerHTML = `
+          <button style="padding:4px 10px;font-size:.75rem;background:var(--accent);color:#000;border:none;border-radius:6px;cursor:pointer;font-weight:600">Substituir</button>
+          <button style="padding:4px 10px;font-size:.75rem;background:var(--surface2);color:var(--text2);border:1px solid var(--border2);border-radius:6px;cursor:pointer">Pular</button>
+          <button style="padding:4px 10px;font-size:.75rem;background:var(--green);color:#000;border:none;border-radius:6px;cursor:pointer;font-weight:600">Substituir todos</button>
+          <button style="padding:4px 10px;font-size:.75rem;background:var(--surface2);color:var(--text3);border:1px solid var(--border2);border-radius:6px;cursor:pointer">Pular todos</button>`;
+        t.appendChild(btns);
+        const [btnSub, btnPular, btnTodos, btnNenhum] = btns.children;
+        btnSub.onclick    = () => { removeToast(t); resolve('substituir'); };
+        btnPular.onclick  = () => { removeToast(t); resolve('pular'); };
+        btnTodos.onclick  = () => { removeToast(t); resolve('todos'); };
+        btnNenhum.onclick = () => { removeToast(t); resolve('nenhum'); };
+      });
+    }
+
+    // Notificação do navegador ao terminar operação
+    function notifyDone(msg) {
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'granted') {
+        new Notification('Trello Manager', { body: msg, icon: '/logo.png' });
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then(p => {
+          if (p === 'granted') new Notification('Trello Manager', { body: msg, icon: '/logo.png' });
+        });
+      }
+    }
+
     function confirmToast(msg) {
       return new Promise(resolve => {
         const t = showToast(msg, 'warn', 0);
