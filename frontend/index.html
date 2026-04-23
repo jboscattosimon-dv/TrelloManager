@@ -576,12 +576,12 @@
         Subir Conteúdo
       </button>
 
-      <div class="nav-section-label" style="margin-top:8px">Configurações</div>
-
       <button class="nav-item" id="nav-drive" onclick="showPage('drive')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
         Google Drive
       </button>
+
+      <div class="nav-section-label" style="margin-top:8px">Configurações</div>
 
       <button class="nav-item" id="nav-config" onclick="showPage('config')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 1 0 4.93 19.07 10 10 0 0 0 19.07 4.93Z"/></svg>
@@ -633,7 +633,13 @@
         </div>
 
         <div class="card">
-          <div class="card-title">Clientes</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div class="card-title" style="margin:0">Clientes</div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-ghost btn-sm" onclick="toggleTodosClientes(true)">Todos</button>
+              <button class="btn btn-ghost btn-sm" onclick="toggleTodosClientes(false)">Nenhum</button>
+            </div>
+          </div>
           <div class="chip-grid" id="clienteCheckboxes">
             <span style="color:var(--text3);font-size:0.85rem">Carregando clientes...</span>
           </div>
@@ -1090,6 +1096,17 @@
       else chipSelected.add(gi);
       const el = document.getElementById(`chip-${gi}`);
       if (el) el.classList.toggle('selected', chipSelected.has(gi));
+    }
+
+    function toggleTodosClientes(selecionar) {
+      const comLista = clientes.filter(c => c.ativo && c.listIds?.length);
+      comLista.forEach(c => {
+        const gi = clientes.indexOf(c);
+        if (selecionar) chipSelected.add(gi);
+        else chipSelected.delete(gi);
+        const el = document.getElementById(`chip-${gi}`);
+        if (el) el.classList.toggle('selected', selecionar);
+      });
     }
 
     async function criarCards() {
