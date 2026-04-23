@@ -2009,29 +2009,28 @@
       document.body.style.setProperty('--my', e.clientY + 'px');
     });
 
-    // ── Card tilt com mouse ────────────────────────────────
-    function applyTilt() {
-      document.querySelectorAll('.card').forEach(card => {
-        card.addEventListener('mousemove', e => {
-          const r = card.getBoundingClientRect();
-          const x = (e.clientX - r.left) / r.width  - 0.5;
-          const y = (e.clientY - r.top)  / r.height - 0.5;
-          card.style.transform = `perspective(900px) rotateY(${x * 5}deg) rotateX(${-y * 5}deg) translateZ(4px)`;
-          card.style.transition = 'transform 0.05s linear, box-shadow 0.15s';
-          card.style.boxShadow = `${-x*12}px ${-y*12}px 30px rgba(147,51,234,0.08)`;
-        });
-        card.addEventListener('mouseleave', () => {
-          card.style.transform = '';
-          card.style.boxShadow = '';
-          card.style.transition = 'transform 0.4s ease, box-shadow 0.4s ease';
-        });
-      });
-    }
+    // ── Card tilt com mouse (só fora da página de config) ──
+    const TILT_PAGES = ['page-criar', 'page-subir', 'page-drive'];
 
-    // Reaplicar tilt quando conteúdo dinâmico for renderizado
-    const tiltObserver = new MutationObserver(applyTilt);
-    tiltObserver.observe(document.body, { childList: true, subtree: true });
-    applyTilt();
+    document.addEventListener('mousemove', e => {
+      const card = e.target.closest('.card');
+      if (!card) return;
+      const page = card.closest('.page');
+      if (!page || !TILT_PAGES.includes(page.id)) return;
+      const r = card.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width  - 0.5;
+      const y = (e.clientY - r.top)  / r.height - 0.5;
+      card.style.transform = `perspective(900px) rotateY(${x * 4}deg) rotateX(${-y * 4}deg)`;
+      card.style.boxShadow = `${-x*10}px ${-y*10}px 28px rgba(147,51,234,0.07)`;
+    });
+
+    document.addEventListener('mouseleave', e => {
+      const card = e.target.closest?.('.card');
+      if (card) {
+        card.style.transform = '';
+        card.style.boxShadow = '';
+      }
+    }, true);
   </script>
 </body>
 </html>
