@@ -13,6 +13,10 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/drive', require('./routes/drive'));
 app.use('/api/userdata', require('./routes/userdata'));
 
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/landing.html'));
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/login.html'));
 });

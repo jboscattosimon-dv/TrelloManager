@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trello Manager — Gestão de conteúdo</title>
+  <link rel="icon" href="/logo.png" type="image/png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #070709;
+      --surface: #111115;
+      --border: #1c1c23;
+      --text: #f2f2f5;
+      --text2: #7a7a8e;
+      --text3: #3a3a4a;
+      --accent: #38bdf8;
+      --accent-dim: rgba(56,189,248,0.10);
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Glow fundo ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(700px circle at 50% 30%, rgba(56,189,248,0.05), transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Nav ── */
+    nav {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 48px;
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .nav-logo img {
+      width: 32px;
+      height: 32px;
+    }
+    .nav-logo-text {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    .nav-links a {
+      font-size: 0.85rem;
+      color: var(--text2);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .btn-login {
+      padding: 8px 20px;
+      background: var(--accent);
+      color: #000;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: opacity 0.15s;
+    }
+    .btn-login:hover { opacity: 0.85; color: #000; }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 80px 24px 60px;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 14px;
+      border: 1px solid rgba(56,189,248,0.3);
+      background: var(--accent-dim);
+      border-radius: 20px;
+      font-size: 0.75rem;
+      color: var(--accent);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      margin-bottom: 28px;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.4rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      max-width: 700px;
+      margin-bottom: 20px;
+    }
+    .hero h1 span { color: var(--accent); }
+    .hero p {
+      font-size: 1.05rem;
+      color: var(--text2);
+      max-width: 520px;
+      line-height: 1.7;
+      margin-bottom: 40px;
+    }
+    .hero-cta {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .btn-primary {
+      padding: 12px 28px;
+      background: var(--accent);
+      color: #000;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: opacity 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.85; color: #000; }
+    .btn-ghost {
+      padding: 12px 28px;
+      background: transparent;
+      color: var(--text2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .btn-ghost:hover { border-color: var(--text2); color: var(--text); }
+
+    /* ── Features ── */
+    .features {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .feature-icon {
+      font-size: 1.5rem;
+      margin-bottom: 12px;
+    }
+    .feature-card h3 {
+      font-size: 0.92rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+    .feature-card p {
+      font-size: 0.82rem;
+      color: var(--text2);
+      line-height: 1.6;
+    }
+
+    /* ── Footer ── */
+    footer {
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 20px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    footer p { font-size: 0.8rem; color: var(--text3); }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-links a {
+      font-size: 0.8rem;
+      color: var(--text2);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .footer-links a:hover { color: var(--text); }
+
+    @media (max-width: 600px) {
+      nav { padding: 16px 20px; }
+      footer { padding: 20px; flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a class="nav-logo" href="/">
+      <img src="/logo.png" alt="Trello Manager logo">
+      <span class="nav-logo-text">Trello Manager</span>
+    </a>
+    <div class="nav-links">
+      <a href="/privacy.html">Privacidade</a>
+      <a href="/terms.html">Termos</a>
+      <a href="/login.html" class="btn-login">Entrar</a>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-badge">
+      Gestão de conteúdo automatizada
+    </div>
+    <h1>Organize seu <span>Trello e Drive</span><br>sem esforço</h1>
+    <p>
+      Crie cards em lote, suba conteúdo para múltiplos clientes e organize
+      pastas no Google Drive — tudo em um só lugar, de forma rápida e controlada.
+    </p>
+    <div class="hero-cta">
+      <a href="/login.html" class="btn-primary">Acessar o app</a>
+      <a href="/privacy.html" class="btn-ghost">Política de Privacidade</a>
+    </div>
+  </section>
+
+  <section class="features">
+    <div class="feature-card">
+      <div class="feature-icon">🗂</div>
+      <h3>Criar Cards em lote</h3>
+      <p>Gere cards no Trello por período e por cliente com poucos cliques, escolhendo dias da semana e formato de nome.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⬆</div>
+      <h3>Subir Conteúdo</h3>
+      <p>Cole o conteúdo semanal e o app distribui automaticamente para os cards corretos de cada data.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📁</div>
+      <h3>Google Drive</h3>
+      <p>Crie pastas de datas organizadas no Drive de cada cliente, com controle de período e formato de nome.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <h3>Dashboard</h3>
+      <p>Acompanhe o histórico de ações, desfaça criações de cards e veja estatísticas de uso em tempo real.</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>© 2026 Trello Manager. Todos os direitos reservados.</p>
+    <div class="footer-links">
+      <a href="/privacy.html">Política de Privacidade</a>
+      <a href="/terms.html">Termos de Serviço</a>
+      <a href="/login.html">Entrar</a>
+    </div>
+  </footer>
+
+</body>
+</html>
