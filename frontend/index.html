@@ -1607,7 +1607,6 @@
         driveFolderStack = [{ id: folderId, name }];
         driveCurrentFolderId = folderId;
         document.getElementById('driveDestinoNome').textContent = name;
-        document.getElementById('driveSoloPastaRef').textContent = name;
         document.getElementById('driveDestinoLink').href = `https://drive.google.com/drive/folders/${folderId}`;
         panel.style.display = 'block';
         document.getElementById('drivePeriodPlaceholder').style.display = 'none';
@@ -1634,7 +1633,6 @@
       // atualiza destino atual
       const cur = driveFolderStack[driveFolderStack.length - 1];
       document.getElementById('driveDestinoNome').textContent = cur?.name || '';
-      document.getElementById('driveSoloPastaRef').textContent = cur?.name || '';
       document.getElementById('driveDestinoLink').href = `https://drive.google.com/drive/folders/${folderId}`;
       renderBreadcrumb();
 
