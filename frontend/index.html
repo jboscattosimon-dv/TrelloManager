@@ -747,6 +747,27 @@
           </div>
         </div>
 
+        <div class="card">
+          <div class="card-title">Nome do Card</div>
+          <div class="chip-grid" id="formatoChips" style="margin-bottom:12px"></div>
+          <div id="formatoCustomWrap" style="display:none;margin-bottom:10px">
+            <input id="formatoCustom" type="text" placeholder="Ex: {dd}/{mm} - {dia}"
+              oninput="atualizarPreviewFormato()"
+              style="width:100%;padding:7px 10px;font-size:0.83rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text);outline:none;font-family:monospace">
+            <div style="margin-top:6px;font-size:0.72rem;color:var(--text3);line-height:1.7">
+              Variáveis: <code style="color:var(--accent)">{dd}</code> dia &nbsp;
+              <code style="color:var(--accent)">{mm}</code> mês &nbsp;
+              <code style="color:var(--accent)">{aaaa}</code> ano &nbsp;
+              <code style="color:var(--accent)">{dia}</code> nome do dia &nbsp;
+              <code style="color:var(--accent)">{dia-abrev}</code> abrev &nbsp;
+              <code style="color:var(--accent)">{mes}</code> nome do mês
+            </div>
+          </div>
+          <div style="font-size:0.78rem;color:var(--text3)">
+            Prévia: <span id="formatoPreview" style="color:var(--text);font-weight:600"></span>
+          </div>
+        </div>
+
         <button class="btn btn-primary" id="btnCriar" onclick="criarCards()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
           Criar Cards
@@ -1020,6 +1041,7 @@
       renderClienteCheckboxes();
       populateClienteSubir();
       populateTemplateSelect();
+      initFormatoChips();
 
       // volta do OAuth do Google
       const params = new URLSearchParams(location.search);
@@ -1171,12 +1193,73 @@
     }
 
     // ── Date helpers ──────────────────────────────────────
-    const DIAS_NOME = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+    const DIAS_NOME       = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+    const DIAS_ABREV      = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const MESES_NOME_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+    const FORMATO_PRESETS = [
+      { label: 'dd/mm - Dia',        valor: '{dd}/{mm} - {dia}' },
+      { label: 'Dia dd/mm',          valor: '{dia} {dd}/{mm}' },
+      { label: 'Abrev dd/mm',        valor: '{dia-abrev} {dd}/{mm}' },
+      { label: 'dd/mm/aaaa',         valor: '{dd}/{mm}/{aaaa}' },
+      { label: 'dd de Mês',          valor: '{dd} de {mes}' },
+      { label: 'dd/mm',              valor: '{dd}/{mm}' },
+      { label: 'Personalizado',      valor: '__custom__' },
+    ];
+
+    let formatoAtual = FORMATO_PRESETS[0].valor;
+
+    function aplicarFormato(template, date) {
+      const dd  = String(date.getDate()).padStart(2,'0');
+      const mm  = String(date.getMonth()+1).padStart(2,'0');
+      const aaaa = String(date.getFullYear());
+      const aa  = aaaa.slice(2);
+      const dia = DIAS_NOME[date.getDay()];
+      const diaAbrev = DIAS_ABREV[date.getDay()];
+      const mes = MESES_NOME_FULL[date.getMonth()];
+      return template
+        .replace(/\{dd\}/g, dd)
+        .replace(/\{mm\}/g, mm)
+        .replace(/\{aaaa\}/g, aaaa)
+        .replace(/\{aa\}/g, aa)
+        .replace(/\{dia-abrev\}/g, diaAbrev)
+        .replace(/\{dia\}/g, dia)
+        .replace(/\{mes\}/g, mes);
+    }
 
     function formatarTitulo(date) {
-      const dia = String(date.getDate()).padStart(2,'0');
-      const mes = String(date.getMonth()+1).padStart(2,'0');
-      return `${dia}/${mes} - ${DIAS_NOME[date.getDay()]}`;
+      const template = formatoAtual === '__custom__'
+        ? (document.getElementById('formatoCustom')?.value || FORMATO_PRESETS[0].valor)
+        : formatoAtual;
+      return aplicarFormato(template, date);
+    }
+
+    function initFormatoChips() {
+      const wrap = document.getElementById('formatoChips');
+      wrap.innerHTML = FORMATO_PRESETS.map((p, i) =>
+        `<span class="chip${i === 0 ? ' selected' : ''}" onclick="selecionarFormato(${i})" id="formato-chip-${i}">${p.label}</span>`
+      ).join('');
+      atualizarPreviewFormato();
+    }
+
+    function selecionarFormato(i) {
+      FORMATO_PRESETS.forEach((_, j) => {
+        document.getElementById(`formato-chip-${j}`)?.classList.toggle('selected', j === i);
+      });
+      formatoAtual = FORMATO_PRESETS[i].valor;
+      const isCustom = formatoAtual === '__custom__';
+      document.getElementById('formatoCustomWrap').style.display = isCustom ? 'block' : 'none';
+      atualizarPreviewFormato();
+    }
+
+    function atualizarPreviewFormato() {
+      const template = formatoAtual === '__custom__'
+        ? (document.getElementById('formatoCustom')?.value || '')
+        : formatoAtual;
+      const hoje = new Date();
+      document.getElementById('formatoPreview').textContent = template
+        ? aplicarFormato(template, hoje)
+        : '—';
     }
 
     function diasNoRange(inicio, fim, diasSemana) {
