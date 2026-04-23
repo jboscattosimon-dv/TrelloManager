@@ -43,34 +43,6 @@
       transition: background 0.05s linear;
     }
 
-    /* Cursor customizado */
-    * { cursor: none !important; }
-    #cursor-dot {
-      position: fixed;
-      width: 7px; height: 7px;
-      background: #a855f7;
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 99999;
-      transform: translate(-50%, -50%);
-      transition: width 0.15s, height 0.15s, opacity 0.15s;
-    }
-    #cursor-ring {
-      position: fixed;
-      width: 28px; height: 28px;
-      border: 1.5px solid rgba(168,85,247,0.45);
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 99998;
-      transform: translate(-50%, -50%);
-      transition: width 0.25s, height 0.25s, border-color 0.25s, transform 0.08s linear;
-    }
-    body:has(button:hover) #cursor-ring,
-    body:has(a:hover) #cursor-ring,
-    body:has(input:focus) #cursor-ring {
-      width: 42px; height: 42px;
-      border-color: rgba(168,85,247,0.7);
-    }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
@@ -106,7 +78,8 @@
     .logo-icon {
       width: 34px; height: 34px;
       flex-shrink: 0;
-      filter: invert(1) brightness(1.8) drop-shadow(0 0 6px rgba(168,85,247,0.6));
+      filter: invert(1) drop-shadow(0 0 5px rgba(168,85,247,0.5));
+      mix-blend-mode: screen;
     }
     .logo-text { font-size: 0.95rem; font-weight: 700; letter-spacing: -0.02em; }
     .logo-sub { font-size: 0.7rem; color: var(--text3); margin-top: 1px; }
@@ -2029,33 +2002,12 @@
     }
   </script>
 
-  <!-- Cursor -->
-  <div id="cursor-dot"></div>
-  <div id="cursor-ring"></div>
-
   <script>
-    // ── Cursor customizado ─────────────────────────────────
-    const dot  = document.getElementById('cursor-dot');
-    const ring = document.getElementById('cursor-ring');
-    let mx = 0, my = 0, rx = 0, ry = 0;
-
+    // ── Mouse glow background ──────────────────────────────
     document.addEventListener('mousemove', e => {
-      mx = e.clientX; my = e.clientY;
-      dot.style.left = mx + 'px';
-      dot.style.top  = my + 'px';
-      document.body.style.setProperty('--mx', mx + 'px');
-      document.body.style.setProperty('--my', my + 'px');
+      document.body.style.setProperty('--mx', e.clientX + 'px');
+      document.body.style.setProperty('--my', e.clientY + 'px');
     });
-
-    // Ring segue com lag suave
-    function animRing() {
-      rx += (mx - rx) * 0.12;
-      ry += (my - ry) * 0.12;
-      ring.style.left = rx + 'px';
-      ring.style.top  = ry + 'px';
-      requestAnimationFrame(animRing);
-    }
-    animRing();
 
     // ── Card tilt com mouse ────────────────────────────────
     function applyTilt() {
