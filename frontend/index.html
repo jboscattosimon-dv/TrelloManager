@@ -565,6 +565,64 @@
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+
+    /* ── Toasts ─────────────────────────────── */
+    #toast-wrap {
+      position: fixed; bottom: 24px; right: 24px;
+      z-index: 9999; display: flex; flex-direction: column; gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; border-radius: 10px;
+      font-size: 0.84rem; font-weight: 500;
+      max-width: 340px; pointer-events: auto;
+      backdrop-filter: blur(12px);
+      animation: toast-in 0.3s cubic-bezier(.2,1.4,.5,1) both;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .toast.out { animation: toast-out 0.25s ease forwards; }
+    .toast-success { background: rgba(17,24,20,0.95); border: 1px solid #34d399; color: #6ee7b7; }
+    .toast-error   { background: rgba(24,10,10,0.95); border: 1px solid #f87171; color: #fca5a5; }
+    .toast-info    { background: rgba(10,18,28,0.95); border: 1px solid var(--accent); color: var(--accent-hover); }
+    .toast-warn    { background: rgba(24,20,8,0.95);  border: 1px solid #fbbf24; color: #fde68a; }
+    .toast-icon { font-size: 1rem; flex-shrink: 0; }
+    .toast-msg { flex: 1; }
+    .toast-action {
+      font-size: 0.78rem; font-weight: 700; text-decoration: underline;
+      cursor: pointer; white-space: nowrap; opacity: 0.85;
+    }
+    .toast-close { opacity: 0.5; cursor: pointer; font-size: 1rem; flex-shrink: 0; }
+    .toast-close:hover { opacity: 1; }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(16px) scale(0.95); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes toast-out {
+      to { opacity: 0; transform: translateY(8px) scale(0.95); max-height: 0; margin: 0; padding: 0; }
+    }
+
+    /* ── Skeleton ───────────────────────────── */
+    @keyframes shimmer {
+      0%   { background-position: -400px 0; }
+      100% { background-position: 400px 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface2) 25%, var(--border2) 50%, var(--surface2) 75%);
+      background-size: 800px 100%;
+      animation: shimmer 1.6s infinite linear;
+      border-radius: 6px;
+    }
+    .sk-line { height: 12px; margin-bottom: 8px; }
+    .sk-chip { height: 32px; width: 90px; border-radius: 20px; display: inline-block; }
+
+    /* ── Page transition ────────────────────── */
+    .page { animation: none; }
+    .page.active { animation: page-in 0.2s ease both; }
+    @keyframes page-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 <body>
@@ -587,7 +645,12 @@
     </div>
 
     <nav class="sidebar-nav">
-      <div class="nav-section-label">Ferramentas</div>
+      <button class="nav-item" id="nav-dash" onclick="showPage('dash')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </button>
+
+      <div class="nav-section-label" style="margin-top:8px">Ferramentas</div>
 
       <button class="nav-item active" id="nav-criar" onclick="showPage('criar')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
@@ -639,6 +702,18 @@
 
     <div class="content">
 
+      <!-- PAGE: Dashboard -->
+      <div class="page" id="page-dash">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px" id="dashStats"></div>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="card-title" style="margin:0">Histórico de ações</div>
+            <button class="btn btn-ghost btn-sm" onclick="clearHistory()">Limpar</button>
+          </div>
+          <div id="dashHistory" style="display:flex;flex-direction:column;gap:6px;max-height:420px;overflow-y:auto"></div>
+        </div>
+      </div>
+
       <!-- PAGE: Criar Cards -->
       <div class="page active" id="page-criar">
         <div class="card">
@@ -664,7 +739,7 @@
             </div>
           </div>
           <div class="chip-grid" id="clienteCheckboxes">
-            <span style="color:var(--text3);font-size:0.85rem">Carregando clientes...</span>
+            <span class="skeleton sk-chip"></span><span class="skeleton sk-chip"></span><span class="skeleton sk-chip" style="width:70px"></span><span class="skeleton sk-chip" style="width:110px"></span>
           </div>
         </div>
 
@@ -689,7 +764,16 @@
         </div>
 
         <div class="card">
-          <div class="card-title">Conteúdo</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div class="card-title" style="margin:0">Conteúdo</div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <select id="templateSelect" style="font-size:0.78rem;padding:4px 8px;background:var(--surface2);color:var(--text2);border:1px solid var(--border2);border-radius:6px;max-width:150px" onchange="loadTemplate()">
+                <option value="">Templates...</option>
+              </select>
+              <button class="btn btn-ghost btn-sm" onclick="saveTemplate()">Salvar</button>
+              <button class="btn btn-ghost btn-sm" onclick="deleteTemplate()">✕</button>
+            </div>
+          </div>
           <textarea id="conteudo" rows="14" placeholder="Cole aqui o conteúdo com datas, ex:&#10;&#10;SEGUNDA-FEIRA — 18 de maio&#10;Texto do card...&#10;&#10;TERÇA-FEIRA — 19/05&#10;Texto..."></textarea>
         </div>
 
@@ -855,7 +939,7 @@
         </div>
 
         <div class="card" style="padding:0;overflow:hidden">
-          <div id="configTable" style="padding:16px;color:var(--text3);font-size:0.85rem">Carregando boards...</div>
+          <div id="configTable" style="padding:20px;display:flex;flex-direction:column;gap:10px"><div class="skeleton sk-line" style="width:55%"></div><div class="skeleton sk-line" style="width:75%"></div><div class="skeleton sk-line" style="width:40%"></div></div>
         </div>
 
         <div style="margin-top:16px;display:none" id="configSaveBar">
@@ -929,11 +1013,12 @@
       await sincronizarBoards();
       renderClienteCheckboxes();
       populateClienteSubir();
+      populateTemplateSelect();
 
       // volta do OAuth do Google
       const params = new URLSearchParams(location.search);
       if (params.get('drive') === 'connected') { showPage('drive'); history.replaceState({}, '', '/index.html'); }
-      if (params.get('drive_error')) { showPage('drive'); alert('Erro ao conectar Google: ' + params.get('drive_error')); history.replaceState({}, '', '/index.html'); }
+      if (params.get('drive_error')) { showPage('drive'); showToast('Erro ao conectar Google: ' + params.get('drive_error'), 'error', 8000); history.replaceState({}, '', '/index.html'); }
     })();
 
     function logout() {
@@ -953,22 +1038,27 @@
 
     // ── Pages ─────────────────────────────────────────────
     const PAGE_META = {
-      criar: { title: 'Criar Cards', sub: 'Crie cards no Trello por período' },
-      subir: { title: 'Subir Conteúdo', sub: 'Envie descrições para cards existentes' },
-      drive: { title: 'Google Drive', sub: 'Crie pastas de datas nos drives dos clientes' },
+      dash:   { title: 'Dashboard', sub: 'Histórico e estatísticas de uso' },
+      criar:  { title: 'Criar Cards', sub: 'Crie cards no Trello por período' },
+      subir:  { title: 'Subir Conteúdo', sub: 'Envie descrições para cards existentes' },
+      drive:  { title: 'Google Drive', sub: 'Crie pastas de datas nos drives dos clientes' },
       config: { title: 'Clientes', sub: 'Configure boards e listas por cliente' },
     };
 
     function showPage(name) {
-      ['criar','subir','drive','config'].forEach(p => {
-        document.getElementById(`page-${p}`).classList.toggle('active', p === name);
-        document.getElementById(`nav-${p}`)?.classList.toggle('active', p === name);
+      ['dash','criar','subir','drive','config'].forEach(p => {
+        const pg = document.getElementById(`page-${p}`);
+        if (!pg) return;
+        const isActive = p === name;
+        pg.classList.toggle('active', isActive);
+        if (isActive) { pg.style.animation = 'none'; pg.offsetHeight; pg.style.animation = ''; }
+        document.getElementById(`nav-${p}`)?.classList.toggle('active', isActive);
       });
       if (name === 'drive') checkDriveStatus();
+      if (name === 'dash') renderDashboard();
       document.getElementById('topbarTitle').textContent = PAGE_META[name]?.title || '';
       document.getElementById('topbarSub').textContent = PAGE_META[name]?.sub || '';
       document.getElementById('configSaveBar').style.display = name === 'config' ? 'block' : 'none';
-
       if (name === 'config') renderConfig();
     }
 
@@ -1010,6 +1100,11 @@
       const res = await fetch(`${TRELLO}${path}${sep}key=${trelloKey}&token=${trelloToken}`);
       if (!res.ok) throw new Error(`Trello ${res.status}: ${path}`);
       return res.json();
+    }
+
+    async function tFetchDelete(path) {
+      const sep = path.includes('?') ? '&' : '?';
+      await fetch(`${TRELLO}${path}${sep}key=${trelloKey}&token=${trelloToken}`, { method: 'DELETE' });
     }
 
     async function fetchListas(boardId) {
@@ -1135,10 +1230,10 @@
     async function criarCards() {
       const inicio = document.getElementById('dataInicio').value;
       const fim = document.getElementById('dataFim').value;
-      if (!inicio || !fim) return alert('Selecione as datas');
+      if (!inicio || !fim) return showToast('Selecione as datas de início e fim', 'warn');
 
       const selecionados = [...chipSelected].map(gi => clientes[gi]).filter(Boolean);
-      if (!selecionados.length) return alert('Selecione ao menos um cliente');
+      if (!selecionados.length) return showToast('Selecione ao menos um cliente', 'warn');
 
       const logEl = document.getElementById('log');
       logEl.innerHTML = ''; logEl.style.display = 'block';
@@ -1150,6 +1245,8 @@
 
       let total = 0, done = 0;
       selecionados.forEach(c => total += diasNoRange(inicio, fim, c.diasSemana).length * getListIds(c).length);
+
+      const createdCardIds = [];
 
       for (const c of selecionados) {
         const listIds = getListIds(c);
@@ -1163,7 +1260,11 @@
             try {
               const existing = await buscarCard(listId, titulo);
               if (existing) { logMsg(logEl, `    ↷ ${titulo} — já existe`); }
-              else { await criarCard(listId, titulo, ''); logMsg(logEl, `    ✓ ${titulo}`, 'log-ok'); }
+              else {
+                const newCard = await criarCard(listId, titulo, '');
+                createdCardIds.push(newCard.id);
+                logMsg(logEl, `    ✓ ${titulo}`, 'log-ok');
+              }
             } catch (err) { logMsg(logEl, `    ✗ ${titulo}: ${err.message}`, 'log-err'); }
             done++;
             pb.style.width = `${Math.round(done/total*100)}%`;
@@ -1173,6 +1274,18 @@
       }
       logMsg(logEl, '<br>Concluído!', 'log-ok');
       btn.disabled = false;
+
+      if (createdCardIds.length) {
+        logAction('cards', `${createdCardIds.length} cards criados (${selecionados.map(c=>c.nome).join(', ')})`, { count: createdCardIds.length });
+        showToast(`${createdCardIds.length} cards criados`, 'success', 12000, 'Desfazer', async () => {
+          showToast('Desfazendo...', 'info', 2000);
+          for (const id of createdCardIds) {
+            try { await tFetchDelete(`/cards/${id}`); } catch {}
+          }
+          logMsg(logEl, '<br>Cards desfeitos.', 'log-info');
+          showToast('Cards removidos', 'info');
+        });
+      }
     }
 
     // ── Subir Conteúdo ────────────────────────────────────
@@ -1225,14 +1338,14 @@
 
     async function subirConteudo() {
       const val = document.getElementById('clienteSubir').value;
-      if (!val) return alert('Selecione um cliente');
+      if (!val) return showToast('Selecione um cliente', 'warn');
       const [gi, listId] = val.split('|');
       const c = clientes[+gi];
       const texto = document.getElementById('conteudo').value.trim();
-      if (!texto) return alert('Cole o conteúdo');
+      if (!texto) return showToast('Cole o conteúdo no campo de texto', 'warn');
 
       const blocos = parsearConteudo(texto);
-      if (!blocos.length) return alert('Nenhuma data encontrada. Use formatos como "SEGUNDA-FEIRA — 18 de maio" ou "SEGUNDA 18/05".');
+      if (!blocos.length) return showToast('Nenhuma data encontrada — use formato: SEGUNDA-FEIRA — 18 de maio', 'warn');
 
       const logEl = document.getElementById('logSubir');
       logEl.innerHTML = ''; logEl.style.display = 'block';
@@ -1258,6 +1371,7 @@
       }
       logMsg(logEl, '<br>Concluído!', 'log-ok');
       btn.disabled = false;
+      logAction('subir', `Upload para ${c.nome} — ${nomeLista} (${blocos.length} blocos)`, { count: blocos.length });
     }
 
     // ── Modal de perfil ───────────────────────────────────
@@ -1301,7 +1415,7 @@
     }
 
     async function profileDisconnectDrive() {
-      if (!confirm('Desconectar o Google Drive?')) return;
+      if (!await confirmToast('Desconectar o Google Drive?')) return;
       await driveApi('/disconnect', { method: 'DELETE' });
       loadProfileDriveStatus();
       checkDriveStatus();
@@ -1345,7 +1459,7 @@
     }
 
     async function disconnectDrive() {
-      if (!confirm('Desconectar o Google Drive?')) return;
+      if (!await confirmToast('Desconectar o Google Drive?')) return;
       await driveApi('/disconnect', { method: 'DELETE' });
       checkDriveStatus();
     }
@@ -1509,7 +1623,7 @@
       const { stack } = slotBrowserState[si];
       const folderId = stack[stack.length - 1].id;
       const wrap = document.getElementById(`slot-subfolders-${si}`);
-      wrap.innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Carregando...</span>';
+      wrap.innerHTML = `<span class="skeleton sk-chip"></span><span class="skeleton sk-chip"></span><span class="skeleton sk-chip" style="width:70px"></span>`;
       try {
         const folders = await driveApi(`/folders?folderId=${folderId}`);
         wrap.innerHTML = folders.length
@@ -1549,7 +1663,7 @@
         input.value = '';
         await loadSlotSubfolders(si);
       } catch (err) {
-        alert('Erro ao criar pasta: ' + err.message);
+        showToast('Erro ao criar pasta: ' + err.message, 'error');
       } finally { input.disabled = false; }
     }
 
@@ -1621,7 +1735,7 @@
       const gi = giBoardSel.value;
       const listId = listaSel.value;
       const cardId = cardSel.value;
-      if (!gi || !listId || !cardId) { alert('Selecione board, lista e card.'); return; }
+      if (!gi || !listId || !cardId) { showToast('Selecione board, lista e card', 'warn'); return; }
       const boardName = giBoardSel.options[giBoardSel.selectedIndex].text;
       const listName  = listaSel.options[listaSel.selectedIndex].text;
       const cardOpt   = cardSel.options[cardSel.selectedIndex];
@@ -1656,7 +1770,7 @@
         renderCalendar();
         panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (err) {
-        alert('Erro ao acessar pasta: ' + err.message);
+        showToast('Erro ao acessar pasta: ' + err.message, 'error');
       }
     }
 
@@ -1669,7 +1783,7 @@
 
     async function loadDriveSubfolders(folderId) {
       driveCurrentFolderId = folderId;
-      document.getElementById('driveSubfolders').innerHTML = '<span style="color:var(--text3);font-size:0.82rem">Carregando...</span>';
+      document.getElementById('driveSubfolders').innerHTML = `<span class="skeleton sk-chip"></span><span class="skeleton sk-chip"></span><span class="skeleton sk-chip" style="width:70px"></span>`;
       // atualiza destino atual
       const cur = driveFolderStack[driveFolderStack.length - 1];
       document.getElementById('driveDestinoNome').textContent = cur?.name || '';
@@ -1814,10 +1928,10 @@
     }
 
     async function criarPastasDrive() {
-      if (!driveCurrentFolderId) return alert('Selecione a pasta de destino');
-      if (!calStart || !calEnd) return alert('Selecione o período no calendário');
+      if (!driveCurrentFolderId) return showToast('Selecione uma pasta de destino', 'warn');
+      if (!calStart || !calEnd) return showToast('Selecione um período no calendário', 'warn');
       const dias = getDriveDias();
-      if (!dias.length) return alert('Selecione ao menos um dia da semana');
+      if (!dias.length) return showToast('Selecione ao menos um dia da semana', 'warn');
       const formato = document.getElementById('driveFormato').value;
       const nomes = [];
       const cur = new Date(dsToDate(calStart));
@@ -1826,7 +1940,7 @@
         if (dias.includes(cur.getDay())) nomes.push(formatarNomePasta(new Date(cur), formato));
         cur.setDate(cur.getDate() + 1);
       }
-      if (!nomes.length) return alert('Nenhum dia no período com os dias da semana selecionados');
+      if (!nomes.length) return showToast('Nenhum dia útil no período selecionado', 'warn');
 
       const logEl = document.getElementById('logDrive');
       logEl.innerHTML = ''; logEl.style.display = 'block';
@@ -1839,31 +1953,39 @@
       const pastaDestino = driveFolderStack[driveFolderStack.length - 1]?.name || '';
       logMsg(logEl, `Criando ${nomes.length} pastas em "${pastaDestino}"...`, 'log-info');
 
-      try {
-        const lote = 10;
-        let feito = 0;
-        for (let i = 0; i < nomes.length; i += lote) {
-          const batch = nomes.slice(i, i + lote);
-          const results = await driveApi('/folders', { method: 'POST', body: JSON.stringify({ parentId: driveCurrentFolderId, names: batch }) });
-          results.forEach(r => {
-            if (r.status === 'created') logMsg(logEl, `  ✓ ${r.name}`, 'log-ok');
+      let feito = 0, criadas = 0;
+      for (const nome of nomes) {
+        let ok = false;
+        for (let tentativa = 1; tentativa <= 3; tentativa++) {
+          try {
+            const results = await driveApi('/folders', { method: 'POST', body: JSON.stringify({ parentId: driveCurrentFolderId, names: [nome] }) });
+            const r = results[0];
+            if (r.status === 'created') { logMsg(logEl, `  ✓ ${r.name}`, 'log-ok'); criadas++; }
             else logMsg(logEl, `  ↷ ${r.name} — já existe`);
-          });
-          feito += batch.length;
-          pb.style.width = `${Math.round(feito/nomes.length*100)}%`;
+            ok = true;
+            break;
+          } catch (err) {
+            if (tentativa < 3) {
+              logMsg(logEl, `  ⚠ ${nome}: falhou (tentativa ${tentativa}/3)`, 'log-err');
+              await new Promise(r => setTimeout(r, 1000 * tentativa));
+            } else {
+              logMsg(logEl, `  ✗ ${nome}: ${err.message}`, 'log-err');
+            }
+          }
         }
-        logMsg(logEl, '<br>Concluído!', 'log-ok');
-        await loadDriveSubfolders(driveCurrentFolderId);
-      } catch (err) {
-        logMsg(logEl, `Erro: ${err.message}`, 'log-err');
+        feito++;
+        pb.style.width = `${Math.round(feito/nomes.length*100)}%`;
       }
+      logMsg(logEl, '<br>Concluído!', 'log-ok');
+      logAction('drive', `${criadas} pastas criadas em "${pastaDestino}"`, { count: criadas });
+      await loadDriveSubfolders(driveCurrentFolderId);
       btn.disabled = false;
     }
 
     async function criarPastaSolo() {
       const nome = document.getElementById('drivePastaSoloNome').value.trim();
       if (!nome) return;
-      if (!driveCurrentFolderId) return alert('Selecione a pasta de destino');
+      if (!driveCurrentFolderId) return showToast('Selecione uma pasta de destino', 'warn');
       const logEl = document.getElementById('driveSoloLog');
       logEl.textContent = 'Criando...';
       logEl.style.color = 'var(--text3)';
@@ -1998,18 +2120,158 @@
 
     async function fetchListasCliente(gi) {
       try { clientes[gi].listas = await fetchListas(clientes[gi].boardId); renderConfig(); }
-      catch { alert('Erro ao buscar listas.'); }
+      catch { showToast('Erro ao buscar listas', 'error'); }
     }
 
     function salvarConfig() {
       saveClientes(clientes);
       renderClienteCheckboxes();
       populateClienteSubir();
-      alert('Configurações salvas!');
+      showToast('Configurações salvas!', 'success');
+    }
+
+    // ── Histórico de ações ────────────────────────────────
+    function logAction(type, msg, extra = {}) {
+      const hist = JSON.parse(localStorage.getItem('tm_history') || '[]');
+      hist.unshift({ type, msg, ts: Date.now(), ...extra });
+      localStorage.setItem('tm_history', JSON.stringify(hist.slice(0, 100)));
+    }
+
+    function clearHistory() {
+      localStorage.removeItem('tm_history');
+      renderDashboard();
+      showToast('Histórico limpo', 'info');
+    }
+
+    function renderDashboard() {
+      const hist = JSON.parse(localStorage.getItem('tm_history') || '[]');
+
+      // Stats
+      const statsEl = document.getElementById('dashStats');
+      const cardsCreated = hist.filter(h => h.type === 'cards').reduce((s, h) => s + (h.count || 0), 0);
+      const foldersCreated = hist.filter(h => h.type === 'drive').reduce((s, h) => s + (h.count || 0), 0);
+      const uploads = hist.filter(h => h.type === 'subir').length;
+      const totalActions = hist.length;
+      const statItems = [
+        { label: 'Cards criados', value: cardsCreated, icon: '🗂' },
+        { label: 'Pastas criadas', value: foldersCreated, icon: '📁' },
+        { label: 'Uploads', value: uploads, icon: '⬆' },
+        { label: 'Ações totais', value: totalActions, icon: '⚡' },
+      ];
+      statsEl.innerHTML = statItems.map(s => `
+        <div class="card" style="padding:16px 20px;text-align:center">
+          <div style="font-size:1.6rem;margin-bottom:6px">${s.icon}</div>
+          <div style="font-size:1.5rem;font-weight:700;color:var(--accent)">${s.value}</div>
+          <div style="font-size:0.72rem;color:var(--text3);margin-top:2px">${s.label}</div>
+        </div>`).join('');
+
+      // History list
+      const histEl = document.getElementById('dashHistory');
+      if (!hist.length) {
+        histEl.innerHTML = `<p style="color:var(--text3);font-size:0.85rem;padding:8px 0">Nenhuma ação registrada ainda.</p>`;
+        return;
+      }
+      const typeColors = { cards: 'var(--accent)', drive: 'var(--green)', subir: 'var(--yellow)', error: 'var(--red)' };
+      const typeLabels = { cards: 'Cards', drive: 'Drive', subir: 'Upload', error: 'Erro' };
+      histEl.innerHTML = hist.map(h => {
+        const color = typeColors[h.type] || 'var(--text3)';
+        const label = typeLabels[h.type] || h.type;
+        const date = new Date(h.ts);
+        const timeStr = date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface);border-radius:8px;font-size:0.82rem">
+          <span style="padding:2px 8px;background:${color}1a;color:${color};border-radius:20px;font-size:0.7rem;font-weight:600;flex-shrink:0">${label}</span>
+          <span style="flex:1;color:var(--text2)">${h.msg}</span>
+          <span style="color:var(--text3);font-size:0.72rem;flex-shrink:0">${timeStr}</span>
+        </div>`;
+      }).join('');
+    }
+
+    // ── Templates de conteúdo ─────────────────────────────
+    function getTemplates() {
+      return JSON.parse(localStorage.getItem('tm_templates') || '{}');
+    }
+    function saveTemplates(tpls) {
+      localStorage.setItem('tm_templates', JSON.stringify(tpls));
+    }
+    function populateTemplateSelect() {
+      const sel = document.getElementById('templateSelect');
+      const tpls = getTemplates();
+      const keys = Object.keys(tpls);
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">Templates...</option>' + keys.map(k => `<option value="${k}">${k}</option>`).join('');
+      if (cur && tpls[cur]) sel.value = cur;
+    }
+    function loadTemplate() {
+      const sel = document.getElementById('templateSelect');
+      const name = sel.value;
+      if (!name) return;
+      const tpls = getTemplates();
+      if (tpls[name]) document.getElementById('conteudo').value = tpls[name];
+    }
+    async function saveTemplate() {
+      const texto = document.getElementById('conteudo').value.trim();
+      if (!texto) return showToast('Escreva um conteúdo antes de salvar', 'warn');
+      const name = prompt('Nome do template:');
+      if (!name?.trim()) return;
+      const tpls = getTemplates();
+      tpls[name.trim()] = texto;
+      saveTemplates(tpls);
+      populateTemplateSelect();
+      document.getElementById('templateSelect').value = name.trim();
+      showToast(`Template "${name.trim()}" salvo`, 'success');
+    }
+    async function deleteTemplate() {
+      const sel = document.getElementById('templateSelect');
+      const name = sel.value;
+      if (!name) return showToast('Selecione um template para excluir', 'warn');
+      if (!await confirmToast(`Excluir template "${name}"?`)) return;
+      const tpls = getTemplates();
+      delete tpls[name];
+      saveTemplates(tpls);
+      populateTemplateSelect();
+      showToast('Template excluído', 'info');
     }
   </script>
 
+  <div id="toast-wrap"></div>
+
   <script>
+    // ── Toast system ───────────────────────────────────────
+    function showToast(msg, type = 'success', duration = 4000, actionLabel = null, actionFn = null) {
+      const wrap = document.getElementById('toast-wrap');
+      const icons = { success: '✓', error: '✕', info: 'ℹ', warn: '⚠' };
+      const t = document.createElement('div');
+      t.className = `toast toast-${type}`;
+      t.innerHTML = `<span class="toast-icon">${icons[type] || '●'}</span>
+        <span class="toast-msg">${msg}</span>
+        ${actionLabel ? `<span class="toast-action" id="ta-${Date.now()}">${actionLabel}</span>` : ''}
+        <span class="toast-close">×</span>`;
+      if (actionLabel && actionFn) {
+        t.querySelector('.toast-action').onclick = () => { actionFn(); removeToast(t); };
+      }
+      t.querySelector('.toast-close').onclick = () => removeToast(t);
+      wrap.appendChild(t);
+      if (duration > 0) setTimeout(() => removeToast(t), duration);
+      return t;
+    }
+    function removeToast(t) {
+      if (!t || !t.parentNode) return;
+      t.classList.add('out');
+      setTimeout(() => t.remove(), 260);
+    }
+    function confirmToast(msg) {
+      return new Promise(resolve => {
+        const t = showToast(msg, 'warn', 0);
+        const btns = document.createElement('div');
+        btns.style.cssText = 'display:flex;gap:8px;margin-top:10px';
+        btns.innerHTML = `<button style="padding:4px 14px;font-size:.78rem;background:var(--red);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">Sim</button>
+          <button style="padding:4px 14px;font-size:.78rem;background:var(--surface2);color:var(--text2);border:1px solid var(--border2);border-radius:6px;cursor:pointer">Não</button>`;
+        t.appendChild(btns);
+        btns.children[0].onclick = () => { removeToast(t); resolve(true); };
+        btns.children[1].onclick = () => { removeToast(t); resolve(false); };
+      });
+    }
+
     // ── Mouse glow background ──────────────────────────────
     document.addEventListener('mousemove', e => {
       document.body.style.setProperty('--mx', e.clientX + 'px');
