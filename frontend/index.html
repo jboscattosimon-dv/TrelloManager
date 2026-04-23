@@ -19,9 +19,9 @@
       --text: #f2f2f5;
       --text2: #7a7a8e;
       --text3: #48485a;
-      --accent: #9333ea;
-      --accent-dim: rgba(147,51,234,0.13);
-      --accent-hover: #a855f7;
+      --accent: #38bdf8;
+      --accent-dim: rgba(56,189,248,0.12);
+      --accent-hover: #7dd3fc;
       --green: #34d399;
       --red: #f87171;
       --yellow: #fbbf24;
@@ -37,7 +37,7 @@
       content: '';
       position: fixed;
       inset: 0;
-      background: radial-gradient(700px circle at var(--mx) var(--my), rgba(147,51,234,0.055), transparent 50%);
+      background: radial-gradient(700px circle at var(--mx) var(--my), rgba(56,189,248,0.04), transparent 50%);
       pointer-events: none;
       z-index: 0;
       transition: background 0.05s linear;
@@ -78,7 +78,7 @@
     .logo-icon {
       width: 34px; height: 34px;
       flex-shrink: 0;
-      filter: invert(1) drop-shadow(0 0 5px rgba(168,85,247,0.5));
+      filter: invert(1) drop-shadow(0 0 5px rgba(56,189,248,0.5));
       mix-blend-mode: screen;
     }
     .logo-text { font-size: 0.95rem; font-weight: 700; letter-spacing: -0.02em; }
@@ -140,7 +140,7 @@
     .user-pill:hover { background: var(--surface); }
     .user-avatar {
       width: 28px; height: 28px;
-      background: linear-gradient(135deg, var(--accent), #8b5cf6);
+      background: linear-gradient(135deg, var(--accent), #0ea5e9);
       border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
       font-size: 0.75rem; font-weight: 700; color: #fff; flex-shrink: 0;
@@ -281,30 +281,37 @@
     .btn-danger:hover { background: rgba(248,113,113,0.25); }
 
     /* ── Client chips ───────────────────────── */
-    .chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip-grid { display: flex; flex-wrap: wrap; gap: 6px; }
     .chip {
       display: flex;
       align-items: center;
-      gap: 7px;
-      padding: 6px 14px;
-      border-radius: 8px;
+      gap: 8px;
+      padding: 7px 14px;
+      border-radius: 20px;
       border: 1px solid var(--border2);
       background: var(--surface2);
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       font-weight: 500;
       cursor: pointer;
       transition: all 0.15s;
       user-select: none;
+      color: var(--text2);
     }
+    .chip:hover { border-color: var(--accent); color: var(--text); }
     .chip input { display: none; }
     .chip-dot {
-      width: 7px; height: 7px;
+      width: 6px; height: 6px;
       border-radius: 50%;
       background: var(--border2);
       transition: background 0.15s;
       flex-shrink: 0;
     }
-    .chip.selected { border-color: var(--accent); background: var(--accent-dim); color: var(--accent-hover); }
+    .chip.selected {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+      color: var(--accent-hover);
+      font-weight: 600;
+    }
     .chip.selected .chip-dot { background: var(--accent); }
 
     /* ── Log terminal ───────────────────────── */
@@ -2021,7 +2028,7 @@
       const x = (e.clientX - r.left) / r.width  - 0.5;
       const y = (e.clientY - r.top)  / r.height - 0.5;
       card.style.transform = `perspective(900px) rotateY(${x * 4}deg) rotateX(${-y * 4}deg)`;
-      card.style.boxShadow = `${-x*10}px ${-y*10}px 28px rgba(147,51,234,0.07)`;
+      card.style.boxShadow = `${-x*10}px ${-y*10}px 28px rgba(56,189,248,0.06)`;
     });
 
     document.addEventListener('mouseleave', e => {
